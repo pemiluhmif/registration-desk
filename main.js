@@ -1,7 +1,8 @@
 const { app, BrowserWindow } = require('electron');
 const Messaging = require('./messaging');
+const ipcMain = require('electron').ipcMain;
 
-const RMQ_URL = "";
+const RMQ_URL = "amqp://gxqzgwoj:hXDR_7ciQm93nouQGRC_YGLPbIYnFCid@mustang.rmq.cloudamqp.com/gxqzgwoj";
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -18,7 +19,7 @@ function createWindow () {
     //win.webContents.openDevTools()
 
     // Connect to broker
-    Messaging.init("node01");
+    Messaging.init("node01", Messaging.NODE_TYPE_REGDESK);
     Messaging.connect(RMQ_URL, null);
 
     // Emitted when the window is closed.
@@ -29,6 +30,14 @@ function createWindow () {
         Messaging.close();
         win = null
     })
+
+    ipcMain.on('publish', function (queue, msg) {
+        Messaging.publish(queue, msg);
+    });
+
+    ipcMain.on('subscribe', function (queue, callback) {
+        Messaging.setMessageListener(queue, callback);
+    });
 }
 
 // This method will be called when Electron has finished
@@ -52,6 +61,5 @@ app.on('activate', () => {
         createWindow()
     }
 })
-
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.

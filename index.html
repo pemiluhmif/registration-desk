@@ -9,5 +9,17 @@
 We are using node <script>document.write(process.versions.node)</script>,
 Chrome <script>document.write(process.versions.chrome)</script>,
 and Electron <script>document.write(process.versions.electron)</script>.
+
+<input id="nim" placeholder="NIM" />
+<button id="btn-queue">Queue!</button>
 </body>
+
+<script type="text/javascript">
+    const Messaging = require("./messaging");
+    const ipcRenderer = require('electron').ipcRenderer;
+    document.querySelector('#btn-queue').addEventListener('click', function() {
+        alert("Piuw");
+        ipcRenderer.send("publish", Messaging.EX_VOTER_QUEUED, JSON.stringify({nim: document.getElementById("nim").value}));
+    });
+</script>
 </html>

@@ -1,6 +1,8 @@
 var amqp = require('amqplib/callback_api');
 var nodeId = null;
 var amqpConn;
+var nodeType = null;
+var amqpCh;
 
 const EX_NODE_JOINED = "node_joined";
 const EX_PING = "ping";
@@ -9,10 +11,24 @@ const EX_VOTER_QUEUED = "voter_queued";
 const EX_VOTER_SERVED = "voter_served";
 const EX_VOTE_CASTED = "vote_casted";
 
+const NODE_TYPE_REGDESK = "regdesk";
+const NODE_TYPE_VOTING_BOOTH = "voting_booth";
+
+exports.EX_NODE_JOINED = EX_NODE_JOINED;
+exports.EX_PING = EX_PING;
+exports.EX_HEARTBEAT = EX_HEARTBEAT;
+exports.EX_VOTER_QUEUED = EX_VOTER_QUEUED;
+exports.EX_VOTER_SERVED = EX_VOTER_SERVED;
+exports.EX_VOTE_CASTED = EX_VOTE_CASTED;
+
+exports.NODE_TYPE_REGDESK = NODE_TYPE_REGDESK;
+exports.NODE_TYPE_VOTING_BOOTH = NODE_TYPE_VOTING_BOOTH;
+
 var listeners = [];
 
-exports.init = function(nid) {
+exports.init = function(nid, ntype) {
     nodeId = nid;
+    nodeType = ntype;
 };
 
 exports.connect = function(url, callback) {
@@ -36,6 +52,8 @@ exports.close = function() {
 };
 
 function assertExchanges(ch) {
+    amqpCh = ch;
+
     // Assert exchanges
     ch.assertExchange(EX_NODE_JOINED, 'topic', {durable: false});
     ch.assertExchange(EX_PING, 'topic', {durable: false});
@@ -54,6 +72,8 @@ function assertExchanges(ch) {
             if(callback !== undefined)
                 callback(msg, ch);
         }, {noAck: true});
+
+        ch.sendToQueue(q.queue, new Buffer(JSON.stringify({'nodeId': nodeId, 'nodeType': nodeType})));
     });
 
     ch.assertQueue(buildQueueName(EX_PING), {durable: false, exclusive: true}, function(err, q) {
@@ -64,6 +84,8 @@ function assertExchanges(ch) {
             let callback = listeners[EX_PING];
             if(callback !== undefined)
                 callback(msg, ch);
+
+            ch.sendToQueue(buildQueueName(EX_HEARTBEAT), new Buffer({'nodeId': nodeId, 'nodeType': nodeType}));
         }, {noAck: true});
     });
 
@@ -81,12 +103,12 @@ function assertExchanges(ch) {
         ch.bindQueue(q.queue, EX_VOTER_QUEUED, '');
 
         // No auto acknowledge, since voting can take a long time (machine wise)
-        ch.consume(q.queue, function(msg) {
+        /*ch.consume(q.queue, function(msg) {
             console.log(" [x] %s", msg.content.toString());
             let callback = listeners[EX_VOTER_QUEUED];
             if(callback !== undefined)
                 callback(msg, ch);
-        }, {noAck: false});
+        }, {noAck: false});*/
     });
 
     ch.assertQueue(buildQueueName(EX_VOTE_CASTED), {durable: true, exclusive: true}, function(err, q) {
@@ -119,4 +141,13 @@ function buildQueueName(exName) {
 
 exports.setMessageListener = function(queue, callback) {
     listeners[queue] = callback;
+};
+
+
+exports.publish = function(queue, msg) {
+    let queueName = (queue === EX_VOTER_QUEUED) ? EX_VOTER_QUEUED.toString() : buildQueueName(queue.toString());
+    if(amqpCh !== undefined) {
+        amqpCh.sendToQueue(queueName, new Buffer(msg));
+        console.log(" [x] Sent to queue %s", queueName);
+    }
 };
