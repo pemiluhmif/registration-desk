@@ -1,0 +1,24 @@
+{
+  "name": "registration-desk",
+  "version": "0.1.0",
+  "description": "Registration desk module for HMIF election",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pemiluhmif/registration-desk.git"
+  },
+  "author": "Divisi IT Pemilu HMIF 2019",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pemiluhmif/registration-desk/issues"
+  },
+  "homepage": "https://github.com/pemiluhmif/registration-desk#readme",
+  "dependencies": {
+    "amqplib": "^0.5.2",
+    "electron": "^3.0.7"
+  }
+}
