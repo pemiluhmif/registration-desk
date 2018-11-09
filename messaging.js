@@ -1,25 +1,38 @@
+/**
+ * Database layer
+ *
+ * @author Muhammad Aditya H.
+ */
+
 var amqp = require('amqplib/callback_api');
 var nodeId = null;
 var amqpConn;
 var nodeType = null;
 var amqpCh;
 
-const EX_NODE_JOINED = "node_joined";
+const EX_NODE_UPDATED = "node_updated";
 const EX_PING = "ping";
 const EX_HEARTBEAT = "heartbeat";
 const EX_VOTER_QUEUED = "voter_queued";
 const EX_VOTER_SERVED = "voter_served";
 const EX_VOTE_CASTED = "vote_casted";
 
+const EX_REQUEST_DATA_BROADCAST = "request_data_broadcast";
+const EX_VOTE_DATA_REPLY = "vote_data_reply";
+const EX_PERSON_DATA_REPLY = "person_data_reply";
+
 const NODE_TYPE_REGDESK = "regdesk";
 const NODE_TYPE_VOTING_BOOTH = "voting_booth";
 
-exports.EX_NODE_JOINED = EX_NODE_JOINED;
+exports.EX_NODE_JOINED = EX_NODE_UPDATED;
 exports.EX_PING = EX_PING;
 exports.EX_HEARTBEAT = EX_HEARTBEAT;
 exports.EX_VOTER_QUEUED = EX_VOTER_QUEUED;
 exports.EX_VOTER_SERVED = EX_VOTER_SERVED;
 exports.EX_VOTE_CASTED = EX_VOTE_CASTED;
+exports.EX_REQUEST_DATA_BROADCAST = EX_REQUEST_DATA_BROADCAST;
+exports.EX_VOTE_DATA_REPLY = EX_VOTE_DATA_REPLY;
+exports.EX_PERSON_DATA_REPLY = EX_PERSON_DATA_REPLY;
 
 exports.NODE_TYPE_REGDESK = NODE_TYPE_REGDESK;
 exports.NODE_TYPE_VOTING_BOOTH = NODE_TYPE_VOTING_BOOTH;
@@ -37,6 +50,9 @@ exports.connect = function(url, callback) {
             conn.createChannel(function (err, ch) {
                 assertExchanges(ch);
                 if(callback != null) callback();
+
+                // Publish node status
+                exports.publish(EX_NODE_UPDATED, JSON.stringify({'node_id': nodeId, 'node_type': nodeType, 'status': 'JOIN'}));
             });
 
             amqpConn = conn;
@@ -47,33 +63,31 @@ exports.connect = function(url, callback) {
 };
 
 exports.close = function() {
-    if(amqpConn !== undefined)
-        amqpConn.close();
+    if(amqpConn !== undefined) {
+        this.publish(EX_NODE_UPDATED, JSON.stringify({'node_id': nodeId, 'node_type': nodeType, 'status': 'LEAVE'}), function() {
+            amqpConn.close();
+        });
+    }
 };
 
 function assertExchanges(ch) {
     amqpCh = ch;
 
     // Assert exchanges
-    ch.assertExchange(EX_NODE_JOINED, 'topic', {durable: false});
+    ch.assertExchange(EX_NODE_UPDATED, 'topic', {durable: false});
     ch.assertExchange(EX_PING, 'topic', {durable: false});
     ch.assertExchange(EX_HEARTBEAT, 'topic', {durable: false});
 
-    ch.assertExchange(EX_VOTER_QUEUED, 'topic', {durable: true});
-    ch.assertExchange(EX_VOTE_CASTED, 'topic', {durable: true});
-
     // Assert queues
-    ch.assertQueue(buildQueueName(EX_NODE_JOINED), {durable: false, exclusive: true}, function(err, q) {
-        ch.bindQueue(q.queue, EX_NODE_JOINED, '');
+    ch.assertQueue(buildQueueName(EX_NODE_UPDATED), {durable: false, exclusive: true}, function(err, q) {
+        ch.bindQueue(q.queue, EX_NODE_UPDATED, '');
 
         ch.consume(q.queue, function(msg) {
             console.log(" [x] %s", msg.content.toString());
-            let callback = listeners[EX_NODE_JOINED];
+            let callback = listeners[EX_NODE_UPDATED];
             if(callback !== undefined)
                 callback(msg, ch);
         }, {noAck: true});
-
-        ch.sendToQueue(q.queue, new Buffer(JSON.stringify({'nodeId': nodeId, 'nodeType': nodeType})));
     });
 
     ch.assertQueue(buildQueueName(EX_PING), {durable: false, exclusive: true}, function(err, q) {
@@ -97,42 +111,87 @@ function assertExchanges(ch) {
             let callback = listeners[EX_HEARTBEAT];
             if(callback !== undefined)
                 callback(msg, ch);
-        }, {noAck: true});    });
+        }, {noAck: true});
+    });
 
-    ch.assertQueue(EX_VOTER_QUEUED, {durable: true, exclusive: false}, function(err, q) {
+    ch.assertExchange(EX_VOTER_QUEUED, 'topic', {durable: true});
+
+    ch.assertQueue(EX_VOTER_QUEUED, {durable: true, exclusive: false}, function (err, q) {
         ch.bindQueue(q.queue, EX_VOTER_QUEUED, '');
 
         // No auto acknowledge, since voting can take a long time (machine wise)
-        /*ch.consume(q.queue, function(msg) {
+        ch.consume(q.queue, function(msg) {
             console.log(" [x] %s", msg.content.toString());
             let callback = listeners[EX_VOTER_QUEUED];
             if(callback !== undefined)
                 callback(msg, ch);
-        }, {noAck: false});*/
+        }, {noAck: false});
     });
 
-    ch.assertQueue(buildQueueName(EX_VOTE_CASTED), {durable: true, exclusive: true}, function(err, q) {
+    if(nodeType === NODE_TYPE_VOTING_BOOTH) {
+        ch.assertQueue(EX_VOTER_SERVED, {durable: true, exclusive: false}, function (err, q) {
+            // No auto acknowledge, since voting can take a long time (machine wise)
+            ch.consume(q.queue, function(msg) {
+                console.log(" [x] %s", msg.content.toString());
+                let callback = listeners[EX_VOTER_SERVED];
+                if(callback !== undefined)
+                    callback(msg, ch);
+            }, {noAck: false});
+        });
+    }
+
+    ch.assertExchange(EX_VOTE_CASTED, 'topic', {durable: true});
+
+    ch.assertQueue(buildQueueName(EX_VOTE_CASTED), {durable: true, exclusive: true}, function (err, q) {
         ch.bindQueue(q.queue, EX_VOTE_CASTED, '');
 
         // No auto acknowledge, since delivery is important
-        ch.consume(q.queue, function(msg) {
+        ch.consume(q.queue, function (msg) {
             console.log(" [x] %s", msg.content.toString());
             let callback = listeners[EX_VOTE_CASTED];
-            if(callback !== undefined)
+            if (callback !== undefined)
                 callback(msg, ch);
         }, {noAck: false});
     });
 
-    ch.assertQueue(buildQueueName(EX_VOTER_SERVED), {durable: true, exclusive: true}, function(err, q) {
-        // No auto acknowledge, since delivery is important
+    ch.assertExchange(EX_REQUEST_DATA_BROADCAST, 'topic', {durable: false});
+
+    ch.assertQueue(buildQueueName(EX_REQUEST_DATA_BROADCAST), {durable: true, exclusive: true}, function(err, q) {
+        ch.bindQueue(q.queue, EX_REQUEST_DATA_BROADCAST, '');
+
         ch.consume(q.queue, function(msg) {
             console.log(" [x] %s", msg.content.toString());
-            let callback = listeners[EX_VOTER_SERVED];
+            let callback = listeners[EX_REQUEST_DATA_BROADCAST];
             if(callback !== undefined)
                 callback(msg, ch);
-        }, {noAck: false});
+        }, {noAck: true});
     });
 
+    ch.assertExchange(EX_VOTE_DATA_REPLY, 'topic', {durable: false});
+
+    ch.assertQueue(buildQueueName(EX_VOTE_DATA_REPLY), {durable: true, exclusive: true}, function(err, q) {
+        ch.bindQueue(q.queue, EX_VOTE_DATA_REPLY, '');
+
+        ch.consume(q.queue, function(msg) {
+            console.log(" [x] %s", msg.content.toString());
+            let callback = listeners[EX_VOTE_DATA_REPLY];
+            if(callback !== undefined)
+                callback(msg, ch);
+        }, {noAck: true});
+    });
+
+    ch.assertExchange(EX_PERSON_DATA_REPLY, 'topic', {durable: false});
+
+    ch.assertQueue(buildQueueName(EX_PERSON_DATA_REPLY), {durable: true, exclusive: true}, function(err, q) {
+        ch.bindQueue(q.queue, EX_PERSON_DATA_REPLY, '');
+
+        ch.consume(q.queue, function(msg) {
+            console.log(" [x] %s", msg.content.toString());
+            let callback = listeners[EX_PERSON_DATA_REPLY];
+            if(callback !== undefined)
+                callback(msg, ch);
+        }, {noAck: true});
+    });
 }
 
 function buildQueueName(exName) {
@@ -144,10 +203,13 @@ exports.setMessageListener = function(queue, callback) {
 };
 
 
-exports.publish = function(queue, msg) {
+exports.publish = function(queue, msg, callback) {
     let queueName = (queue === EX_VOTER_QUEUED) ? EX_VOTER_QUEUED.toString() : buildQueueName(queue.toString());
     if(amqpCh !== undefined) {
-        amqpCh.sendToQueue(queueName, new Buffer(msg));
+        amqpCh.sendToQueue(queueName, Buffer.from(msg), {}, function () {
+            if(callback !== undefined) callback();
+        });
+
         console.log(" [x] Sent to queue %s", queueName);
     }
 };

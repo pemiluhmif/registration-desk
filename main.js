@@ -1,26 +1,23 @@
 const { app, BrowserWindow } = require('electron');
 const Messaging = require('./messaging');
+const Database = require('./database');
 const ipcMain = require('electron').ipcMain;
 
 const RMQ_URL = "amqp://gxqzgwoj:hXDR_7ciQm93nouQGRC_YGLPbIYnFCid@mustang.rmq.cloudamqp.com/gxqzgwoj";
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let win
+let win;
 
 function createWindow () {
     // Create the browser window.
-    win = new BrowserWindow({ width: 800, height: 600 })
+    win = new BrowserWindow({ width: 800, height: 600 });
 
     // and load the index.html of the app.
-    win.loadFile('index.html')
+    win.loadFile('index.html');
 
     // Open the DevTools.
     //win.webContents.openDevTools()
-
-    // Connect to broker
-    Messaging.init("node01", Messaging.NODE_TYPE_REGDESK);
-    Messaging.connect(RMQ_URL, null);
 
     // Emitted when the window is closed.
     win.on('closed', () => {
@@ -29,7 +26,7 @@ function createWindow () {
         // when you should delete the corresponding element.
         Messaging.close();
         win = null
-    })
+    });
 
     ipcMain.on('publish', function (queue, msg) {
         Messaging.publish(queue, msg);
@@ -43,7 +40,7 @@ function createWindow () {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow)
+app.on('ready', createWindow);
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
@@ -52,7 +49,7 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit()
     }
-})
+});
 
 app.on('activate', () => {
     // On macOS it's common to re-create a window in the app when the
@@ -60,6 +57,15 @@ app.on('activate', () => {
     if (win === null) {
         createWindow()
     }
-})
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
+});
+
+/**
+ * TODO Enable node (invoked after loading Authorization Mainfest)
+ */
+function enableNode(nodeId, originHash, machineKey, amqpUrl) {
+    // Connect to broker
+    Messaging.init(nodeId, Messaging.NODE_TYPE_REGDESK);
+    Messaging.connect(amqpUrl, null);
+
+    Database.authorize(machineKey);
+}
