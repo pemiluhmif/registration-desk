@@ -28,6 +28,10 @@ function createWindow () {
         win = null
     });
 
+    ipcMain.on('initDb',function (event,arg) {
+        Database.init(arg,dbLoaded);
+    })
+
     ipcMain.on('publish', function (queue, msg) {
         Messaging.publish(queue, msg);
     });
@@ -58,6 +62,10 @@ app.on('activate', () => {
         createWindow()
     }
 });
+
+function dbLoaded(success){
+    win.webContents.send('initDbDone',success);
+}
 
 /**
  * TODO Enable node (invoked after loading Authorization Mainfest)

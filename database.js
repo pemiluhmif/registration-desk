@@ -5,6 +5,9 @@
  * @author Joshua C. Randiny
  */
 
+var sqlite3 = require('sqlite3');
+var db = null;
+
 var nodeId = null;
 var nodeType = null;
 var machineKey = null;
@@ -16,8 +19,55 @@ var dbUrl = null;
  * Load SQLite database
  * @param dbUrl SQLite database URL
  */
-exports.init = function(dbUrl) {
+exports.init = function(dbUrl,cbfunc) {
     // TODO load database and all necessary resources
+    db = new sqlite3.Database(dbUrl,(err)=>{
+        if(err){
+            console.log(err.message);
+            cbfunc(false);
+        }else{
+            console.log("Sukses");
+            initTable();
+            cbfunc(true);
+        }
+    });
+};
+
+function initTable(){
+    db.run(`CREATE TABLE IF NOT EXISTS voters (
+        nim INTEGER,
+        name TEXT,
+        last_queued TIMESTAMP,
+        voted INTEGER DEFAULT 0,
+        last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    `);
+
+    db.run(`CREATE TABLE IF NOT EXISTS vote_record (
+    	vote_id INTEGER,
+        node_id INTEGER,
+        previous_signature BLOB,
+        voted_candidate INTEGER,
+        signature BLOB
+    );
+    `);
+
+    db.run(`CREATE TABLE IF NOT EXISTS last_signature (
+        node_id INTEGER,
+        last_signature BLOB,
+        last_signature_signature BLOB
+    );
+    `);
+
+    console.log("created");
+}
+
+/**
+ * Close the database connection
+ */
+exports.close = function() {
+    // TODO load database and all necessary resources
+    db.close();
 };
 
 /**

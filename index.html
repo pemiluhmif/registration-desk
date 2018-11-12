@@ -12,14 +12,38 @@ and Electron <script>document.write(process.versions.electron)</script>.
 
 <input id="nim" placeholder="NIM" />
 <button id="btn-queue">Queue!</button>
+
+<div>
+    <h1>Test DB</h1>
+    <input id="dbLoc" placeholder="sample.db"/>
+    <button id="btn-load">Load DB</button>
+    <h2>Status</h2>
+    <p id="statusLoc"></p>
+</div>
+
+
 </body>
 
 <script type="text/javascript">
     const Messaging = require("./messaging");
     const ipcRenderer = require('electron').ipcRenderer;
+
+    document.getElementById("btn-load").addEventListener('click',function () {
+       alert("Preparing to Load DB");
+       ipcRenderer.send("initDb",document.getElementById("dbLoc").value);
+    });
+
     document.querySelector('#btn-queue').addEventListener('click', function() {
         alert("Piuw");
         ipcRenderer.send("publish", Messaging.EX_VOTER_QUEUED, JSON.stringify({nim: document.getElementById("nim").value}));
     });
+
+    ipcRenderer.on('initDbDone',function (event,status) {
+        if(status){
+            document.getElementById("statusLoc").innerHTML = "Sukses";
+        }else{
+            document.getElementById("statusLoc").innerHTML = "Gagal";
+        }
+    })
 </script>
 </html>
