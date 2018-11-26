@@ -255,6 +255,16 @@ exports.publish = function(queue, msg, callback) {
     }
 };
 
+exports.sendToQueue = function(queueName, msg, callback) {
+    if(amqpCh !== undefined) {
+        amqpCh.sendToQueue(queueName, Buffer.from(msg), {}, function () {
+            if(callback !== undefined) callback();
+        });
+
+        console.log(" [x] Sent to queue %s", queueName);
+    }
+};
+
 exports.getQueueName = function(exName) {
     return buildQueueName(exName);
 };
