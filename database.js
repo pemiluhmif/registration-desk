@@ -74,7 +74,7 @@ function initTable(){
 
     db.run(`CREATE TABLE IF NOT EXISTS vote_record (
     	vote_id INTEGER NOT NULL,
-        node_id INTEGER NOT NULL,
+        node_id TETX NOT NULL,
         previous_signature BLOB NOT NULL,
         voted_candidate INTEGER NOT NULL,
         signature BLOB NOT NULL
@@ -83,7 +83,7 @@ function initTable(){
 
     db.serialize(()=>{
         db.run(`CREATE TABLE IF NOT EXISTS last_signature (
-        node_id INTEGER NOT NULL,
+        node_id TEXT NOT NULL,
         last_signature BLOB NOT NULL,
         last_signature_signature BLOB NOT NULL
         );
@@ -157,7 +157,7 @@ exports.loadInitManifest = function(initDataRaw,cbfunc) {
             var stmt = db.prepare("INSERT INTO config VALUES (?,?)");
 
             // Node id
-            nodeId = parseInt(initData['node_id']);
+            nodeId = initData['node_id'];
             stmt.run('node_id',nodeId);
 
             // origin hash
@@ -220,7 +220,6 @@ exports.loadAuthorizationManifest= function(JSONdata,cbfunc){
         console.error(`Node id doesn't match`);
         cbfunc('initAuthDone',false,`Node id doesn't match`);
     }else{
-
         machineKey = JSONcontent['machine_key'];
         // TODO Set amqp url
         cbfunc('initAuthDone',true,'');
@@ -246,6 +245,7 @@ exports.performVoteDataUpdate = function(node_id, vote_records) {
      * Data coming in from this method belongs to an individual node, one at a time.
      * If a record of the same vote_id exists, prioritize the data coming from the node of which the data is generated.
      */
+
 };
 
 /**
@@ -258,4 +258,6 @@ exports.performPersonDataUpdate = function(node_id, person_records) {
      * Data coming in from this method belongs to an individual node, one at a time.
      * If a record of the same NIM exists, prioritize the most recent data
      */
+
+
 };

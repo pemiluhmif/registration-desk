@@ -61,7 +61,7 @@ and Electron <script>document.write(process.versions.electron)</script>.
 
     document.getElementById("btn-load-auth").addEventListener('click',function () {
         alert("Preparing to Load auth");
-        ipcRenderer.send("loadAuth",document.getElementById("authLoc ").value);
+        ipcRenderer.send("loadAuth",document.getElementById("authLoc").value);
     });
 
     document.querySelector('#btn-queue').addEventListener('click', function() {
