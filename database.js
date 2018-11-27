@@ -6,17 +6,14 @@
  */
 
 const sqlite3 = require('sqlite3');
-const NodeRSA = require('node-rsa');
 const fs = require('fs');
 
 var db = null;
 
 var nodeId = null;
-var nodeType = null;
 var machineKey = null;
 var RSAkey = null;
-var originHash = "abcd";
-var dbUrl = null;
+var originHash = null;
 
 /**
  * Initializes database object
@@ -54,19 +51,6 @@ function generateSig(data){
     }else{
         console.error("Key not loaded");
     }
-}
-
-function initKey(cbfunc){
-
-    if(machineKey!=null){
-        RSAkey = new NodeRSA(machineKey);
-        // console.log(RSAkey.exportKey());
-        return true;
-    }else{
-        cbfunc('initDbDone',false,'Machine key not loaded');
-        return false;
-    }
-
 }
 
 function initTable(){
