@@ -22,7 +22,7 @@ function createWindow () {
     win.loadFile('index.html');
 
     // Open the DevTools.
-    //win.webContents.openDevTools()
+    win.webContents.openDevTools()
 
     // Emitted when the window is closed.
     win.on('closed', () => {
@@ -35,7 +35,17 @@ function createWindow () {
 
     ipcMain.on('initDb',function (event,arg) {
         Database.setupTable(sendStatus);
+
+        // let testJSON={
+        //         "name": "NAME",
+        //         "nim": "13517999",
+        //         "last_queued": "2018-11-27 15:26:09",
+        //         "voted": "1",
+        //         "last_modified": new Date().toISOString().slice(0, 19).replace('T', ' ')
+        // };
+        // Database.performPersonDataUpdate(1,testJSON);
     });
+
 
     ipcMain.on('loadDb',function (event,arg) {
         Database.init(arg,sendStatus);

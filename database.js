@@ -7,6 +7,7 @@
 
 const sqlite3 = require('better-sqlite3');
 const fs = require('fs');
+const crypto = require('crypto');
 
 var db = null;
 
@@ -41,41 +42,43 @@ exports.loadJSON = function(fileName){
 function initTable(){
     console.log("Setting up table");
 
-    db.run(`CREATE TABLE IF NOT EXISTS vote_record (
+    db.exec(`CREATE TABLE IF NOT EXISTS vote_record (
     	vote_id INTEGER NOT NULL,
         node_id TETX NOT NULL,
         previous_signature BLOB NOT NULL,
-        voted_candidate INTEGER NOT NULL,
+        voted_candidate TEXT NOT NULL,
         signature BLOB NOT NULL
     );
     `);
 
-    db.serialize(()=>{
-        db.run(`CREATE TABLE IF NOT EXISTS last_signature (
+    db.exec(`CREATE TABLE IF NOT EXISTS last_signature (
         node_id TEXT NOT NULL,
         last_signature BLOB NOT NULL,
         last_signature_signature BLOB NOT NULL
         );
-        `);
+     `);
 
-        db.get("SELECT Count(*) FROM last_signature", (err, row) => {
-            var dbCount = 0;
-
-            if (err) {
-                console.error(err.message);
-            }else {
-                dbCount = row['Count(*)'];
-                if(dbCount==0){
-                    console.log("Empty last_signature, inserting origin")
-                    /* INSERT ORIGIN */
-                    db.run(`INSERT INTO
+    let row = db.prepare("SELECT Count(*) FROM last_signature").get();
+    let dbCount = row['Count(*)'];
+    if(dbCount==0){
+        console.log("Empty last_signature, inserting origin")
+        /* INSERT ORIGIN */
+        db.prepare(`INSERT INTO
                     last_signature(node_id,last_signature,last_signature_signature) 
-                    VALUES(?,?,?)`,[nodeId,originHash,generateSig(originHash)]);
-                }
-            }
-        });
-    });
+                    VALUES(?,?,?)`).run(nodeId,originHash,generateSig(originHash));
+    }
+
 }
+
+
+/**
+ * generate signature
+ * @param input data to hash
+ */
+function generateSig(input) {
+    let signer = crypto.createHmac('sha256', machineKey);
+    return signer.update(input).digest('hex');
+};
 
 /**
  * Close the database connection
@@ -204,11 +207,36 @@ exports.authorize = function(machine_key) {
  * @param vote_records JSON of vote records
  */
 exports.performVoteDataUpdate = function(node_id, vote_records) {
-    /* TODO perform data update.
-     * Data coming in from this method belongs to an individual node, one at a time.
+    /* Data coming in from this method belongs to an individual node, one at a time.
      * If a record of the same vote_id exists, prioritize the data coming from the node of which the data is generated.
      */
 
+
+
+    let stmtCount = db.prepare("SELECT * FROM vote_record WHERE vote_id = ?");
+    let stmtInsert = db.prepare("INSERT INTO vote_record VALUES (?,?,?,?,?)");
+    let stmtUpdate = db.prepare("UPDATE vote_record SET node_id = ?, previous_signature = ?, voted_candidate = ?, signature = ? WHERE vote_id = ?");
+
+    let transaction = db.transaction((dataInsert)=>{
+        let voteData = stmtCount.get(dataInsert['vote_id']);
+        if(voteData===undefined){
+            stmtInsert.run(dataInsert['vote_id'],
+                           dataInsert['node_id'],
+                           dataInsert['previous_signature'],
+                           dataInsert['voted_candidate'],
+                           dataInsert['signature']);
+        }else{
+            if(node_id === dataInsert['node_id']){
+                stmtUpdate.run(dataInsert['node_id'],
+                    dataInsert['previous_signature'],
+                    dataInsert['voted_candidate'],
+                    dataInsert['signature'],
+                    dataInsert['vote_id']);
+            }
+        }
+    });
+
+    transaction(vote_records);
 };
 
 /**
@@ -217,10 +245,38 @@ exports.performVoteDataUpdate = function(node_id, vote_records) {
  * @param person_records JSON of vote records
  */
 exports.performPersonDataUpdate = function(node_id, person_records) {
-    /* TODO perform data update.
-     * Data coming in from this method belongs to an individual node, one at a time.
+    /* Data coming in from this method belongs to an individual node, one at a time.
      * If a record of the same NIM exists, prioritize the most recent data
      */
 
+    console.log("update person");
+    let stmtCount = db.prepare("SELECT * FROM voters WHERE nim = ?");
+    let stmtInsert = db.prepare("INSERT INTO voters VALUES (?,?,?,?,?)");
+    let stmtUpdate = db.prepare("UPDATE voters SET name = ?, last_queued = ?, voted = ?, last_modified = ? WHERE nim = ?");
+
+    let transaction = db.transaction((dataInsert)=>{
+        let voteData = stmtCount.get(dataInsert['nim']);
+
+        if(voteData===undefined){
+            stmtInsert.run(dataInsert['nim'],
+                dataInsert['name'],
+                dataInsert['last_queued'],
+                dataInsert['voted'],
+                dataInsert['last_modified']);
+        }else{
+            let voteDate = new Date(voteData['last_modified'] );
+            let dataDate = new Date(dataInsert['last_modified']);
+            if(voteDate < dataDate){
+                console.log("in");
+                stmtUpdate.run(dataInsert['name'],
+                    dataInsert['last_queued'],
+                    dataInsert['voted'],
+                    dataInsert['last_modified'],
+                    dataInsert['nim']);
+            }
+        }
+    });
+
+    transaction(person_records);
 
 };
