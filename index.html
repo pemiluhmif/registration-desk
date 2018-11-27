@@ -17,9 +17,11 @@ and Electron <script>document.write(process.versions.electron)</script>.
 <script type="text/javascript">
     const ipcRenderer = require('electron').ipcRenderer;
     document.querySelector('#btn-queue').addEventListener('click', function() {
-        ipcRenderer.send("incoming_voter", "", document.getElementById("nim").value, function(nodeId) {
-            alert("Voter serving on " + nodeId);
-        });
+        ipcRenderer.send("incoming_voter", "Ucup", document.getElementById("nim").value);
+    });
+
+    ipcRenderer.on('voter-served', function (self, nodeId) {
+        alert("Voter serving on " + nodeId);
     });
 </script>
 </html>

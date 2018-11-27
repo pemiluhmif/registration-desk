@@ -2,9 +2,10 @@ const { app, BrowserWindow } = require('electron');
 const Messaging = require('./messaging');
 const Database = require('./database');
 const ipcMain = require('electron').ipcMain;
+const ipcRenderer = require('electron').ipcRenderer;
 const uuid4 = require('uuid4');
 
-const RMQ_URL = "XXX";
+const RMQ_URL = "amqp://gxqzgwoj:hXDR_7ciQm93nouQGRC_YGLPbIYnFCid@mustang.rmq.cloudamqp.com/gxqzgwoj";
 let NODE_ID = "reg01";
 
 var voter_served_callback = null;
@@ -40,8 +41,10 @@ function createWindow () {
         Messaging.setMessageListener(queue, callback);
     });
 
-    ipcMain.on('incoming_voter', function (self, voter_name, voter_nim, callback) {
-        incoming_voter(voter_name, voter_nim, callback);
+    ipcMain.on('incoming_voter', function (event, voter_name, voter_nim) {
+        incoming_voter(voter_name, voter_nim, function(nodeId) {
+            event.sender.send("voter-served", nodeId);
+        });
     });
 
     enableNode(NODE_ID, "hash", "", RMQ_URL);
@@ -78,8 +81,9 @@ function enableNode(nodeId, originHash, machineKey, amqpUrl) {
     // Connect to broker
     Messaging.init(nodeId, Messaging.NODE_TYPE_REGDESK);
     Messaging.connect(amqpUrl, function() {
-        Messaging.setMessageListener(Messaging.getQueueName(Messaging.EX_VOTER_SERVED_REPLY), function(msg, ch) {
-            if(voter_served_callback !== null) voter_served_callback(msg.node_id);
+        Messaging.setMessageListener(Messaging.EX_VOTER_SERVED, function(msg, ch) {
+            let data = JSON.parse(msg.content.toString());
+            if(voter_served_callback != null) voter_served_callback(data.node_id);
         })
     });
 
@@ -101,10 +105,10 @@ function incoming_voter(voterName, voterNIM, callback) {
         "request_id": uuid4(),
         "voter_name": voterName,
         "voter_nim": voterNIM,
-        "reply": Messaging.getQueueName(Messaging.EX_VOTER_SERVED_REPLY)
+        "reply": Messaging.getQueueName(Messaging.EX_VOTER_SERVED)
     };
 
-    Messaging.publish(Messaging.EX_VOTER_QUEUED, JSON.stringify(payload), null);
+    Messaging.publish(Messaging.EX_VOTER_QUEUED, '', JSON.stringify(payload), null);
 
     voter_served_callback = callback;
 }
