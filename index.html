@@ -17,7 +17,7 @@ and Electron <script>document.write(process.versions.electron)</script>.
     <h1>Test DB</h1>
     <input id="dbLoc" placeholder="sample.db"/>
     <button id="btn-load-db">Load DB</button>
-    <button id="btn-init-db">Init DB</button>
+    <button id="btn-init-db">setup DB</button>
     <h2>Status</h2>
     <p id="DBStatusLoc"></p>
 </div>
@@ -78,7 +78,7 @@ and Electron <script>document.write(process.versions.electron)</script>.
         }else{
             document.getElementById("DBStatusLoc").innerHTML = "Error : " + errmsg;
         }
-    })
+    });
 
     ipcRenderer.on('initDbDone',function (event,status,errmsg) {
         if(status){
@@ -86,7 +86,7 @@ and Electron <script>document.write(process.versions.electron)</script>.
         }else{
             document.getElementById("DBStatusLoc").innerHTML = "Error : " + errmsg;
         }
-    })
+    });
 
     ipcRenderer.on('initJSONDone',function (event,status,errmsg) {
         if(status){
@@ -94,7 +94,7 @@ and Electron <script>document.write(process.versions.electron)</script>.
         }else{
             document.getElementById("manifestStatusLoc").innerHTML = "Error : " + errmsg;
         }
-    })
+    });
 
     ipcRenderer.on('initAuthDone',function (event,status,errmsg) {
         if(status){
@@ -102,6 +102,6 @@ and Electron <script>document.write(process.versions.electron)</script>.
         }else{
             document.getElementById("authStatusLoc").innerHTML = "Error : " + errmsg;
         }
-    })
+    });
 </script>
 </html>
