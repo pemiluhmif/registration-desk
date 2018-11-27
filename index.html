@@ -42,7 +42,6 @@ and Electron <script>document.write(process.versions.electron)</script>.
 </body>
 
 <script type="text/javascript">
-    const Messaging = require("./messaging");
     const ipcRenderer = require('electron').ipcRenderer;
 
     document.getElementById("btn-load-db").addEventListener('click',function () {
@@ -66,8 +65,11 @@ and Electron <script>document.write(process.versions.electron)</script>.
     });
 
     document.querySelector('#btn-queue').addEventListener('click', function() {
-        alert("Piuw");
-        ipcRenderer.send("publish", Messaging.EX_VOTER_QUEUED, JSON.stringify({nim: document.getElementById("nim").value}));
+        ipcRenderer.send("incoming_voter", "Ucup", document.getElementById("nim").value);
+    });
+
+    ipcRenderer.on('voter-served', function (self, nodeId) {
+        alert("Voter serving on " + nodeId);
     });
 
     ipcRenderer.on('loadDbDone',function (event,status,errmsg) {

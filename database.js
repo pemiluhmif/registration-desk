@@ -1,7 +1,7 @@
 /**
  * Database layer
  *
- * @author Muhammad Aditya H.
+ * @author Muhammad Aditya Hilmy, NIM 18217025
  * @author Joshua C. Randiny
  */
 
