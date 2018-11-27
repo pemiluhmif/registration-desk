@@ -5,68 +5,113 @@
  * @author Joshua C. Randiny
  */
 
-var sqlite3 = require('sqlite3');
+const sqlite3 = require('sqlite3');
+const NodeRSA = require('node-rsa');
+const fs = require('fs');
+
 var db = null;
 
 var nodeId = null;
 var nodeType = null;
 var machineKey = null;
-var originHash = null;
+var RSAkey = null;
+var originHash = "abcd";
 var dbUrl = null;
 
 /**
  * Initializes database object
  * Load SQLite database
  * @param dbUrl SQLite database URL
+ * @param cbfunc callback function when done
  */
 exports.init = function(dbUrl,cbfunc) {
-    // TODO load database and all necessary resources
     db = new sqlite3.Database(dbUrl,(err)=>{
         if(err){
-            console.log(err.message);
-            cbfunc(false);
+            console.error(err.message);
+            cbfunc('loadDbDone',false,err.message);
         }else{
             console.log("Sukses");
-            initTable();
-            cbfunc(true);
+            cbfunc('loadDbDone',true,'');
         }
     });
+
+
 };
 
+exports.setupTable = function(cbfunc) {
+    if(initKey(cbfunc)){
+        initTable();
+    }
+};
+
+exports.loadJSON = function(fileName){
+    return fs.readFileSync(fileName);
+};
+
+function generateSig(data){
+    if(RSAkey!=null){
+        return RSAkey.sign(data);
+    }else{
+        console.error("Key not loaded");
+    }
+}
+
+function initKey(cbfunc){
+
+    if(machineKey!=null){
+        RSAkey = new NodeRSA(machineKey);
+        // console.log(RSAkey.exportKey());
+        return true;
+    }else{
+        cbfunc('initDbDone',false,'Machine key not loaded');
+        return false;
+    }
+
+}
+
 function initTable(){
-    db.run(`CREATE TABLE IF NOT EXISTS voters (
-        nim INTEGER,
-        name TEXT,
-        last_queued TIMESTAMP,
-        voted INTEGER DEFAULT 0,
-        last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    `);
+    console.log("Setting up table");
 
     db.run(`CREATE TABLE IF NOT EXISTS vote_record (
-    	vote_id INTEGER,
-        node_id INTEGER,
-        previous_signature BLOB,
-        voted_candidate INTEGER,
-        signature BLOB
+    	vote_id INTEGER NOT NULL,
+        node_id INTEGER NOT NULL,
+        previous_signature BLOB NOT NULL,
+        voted_candidate INTEGER NOT NULL,
+        signature BLOB NOT NULL
     );
     `);
 
-    db.run(`CREATE TABLE IF NOT EXISTS last_signature (
-        node_id INTEGER,
-        last_signature BLOB,
-        last_signature_signature BLOB
-    );
-    `);
+    db.serialize(()=>{
+        db.run(`CREATE TABLE IF NOT EXISTS last_signature (
+        node_id INTEGER NOT NULL,
+        last_signature BLOB NOT NULL,
+        last_signature_signature BLOB NOT NULL
+        );
+        `);
 
-    console.log("created");
+        db.get("SELECT Count(*) FROM last_signature", (err, row) => {
+            var dbCount = 0;
+
+            if (err) {
+                console.error(err.message);
+            }else {
+                dbCount = row['Count(*)'];
+                if(dbCount==0){
+                    console.log("Empty last_signature, inserting origin")
+                    /* INSERT ORIGIN */
+                    db.run(`INSERT INTO
+                    last_signature(node_id,last_signature,last_signature_signature) 
+                    VALUES(?,?,?)`,[nodeId,originHash,generateSig(originHash)]);
+                }
+            }
+        });
+    });
 }
 
 /**
  * Close the database connection
  */
 exports.close = function() {
-    // TODO load database and all necessary resources
     db.close();
 };
 
@@ -74,8 +119,112 @@ exports.close = function() {
  * Load Initialization Manifest and persists it to SQLite
  * @param initData initialization manifest JSON object
  */
-exports.loadInitManifest = function(initData) {
+exports.loadInitManifest = function(initDataRaw,cbfunc) {
     // TODO persists
+    if(db!=null){
+        db.serialize(()=>{
+            db.run(`DROP TABLE IF EXISTS config;`);
+            db.run(`CREATE TABLE config (
+                "key" TEXT NOT NULL,
+                value TEXT NOT NULL
+            );`);
+
+            db.run('DROP TABLE IF EXISTS voters');
+            db.run(`CREATE TABLE IF NOT EXISTS voters (
+                nim INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                last_queued TIMESTAMP,
+                voted INTEGER DEFAULT 0 NOT NULL,
+                last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+            );
+            `);
+
+            db.run('DROP TABLE IF EXISTS voting_types');
+            db.run(`CREATE TABLE IF NOT EXISTS voting_types (
+                type  TEXT NOT NULL,
+                title TEXT NOT NULL
+            );
+            `);
+
+            console.log("Trying to load JSON config");
+
+
+
+            let initData = JSON.parse(initDataRaw);
+
+            console.log(initData);
+
+            var stmt = db.prepare("INSERT INTO config VALUES (?,?)");
+
+            // Node id
+            nodeId = parseInt(initData['node_id']);
+            stmt.run('node_id',nodeId);
+
+            // origin hash
+            originHash = initData['origin_hash'];
+            stmt.run('origin_hash',originHash);
+
+            // voting name
+            stmt.run('voting_name',initData['voting_name']);
+
+            // background url
+            stmt.run('background_url',initData['background_url']);
+
+            // logo_url
+            stmt.run('logo_url',initData['logo_url']);
+
+            // color
+            stmt.run('color',JSON.stringify(initData['color']));
+
+
+            console.log("done config");
+
+
+            stmt = db.prepare("INSERT INTO voters (nim,name,last_queued) VALUES (?,?,null)");
+
+            for (var key in initData['voters']) {
+                let data = initData['voters'][key];
+
+                stmt.run(data['nim'],data['name']);
+            }
+
+            console.log("done voters");
+
+            stmt = db.prepare("INSERT INTO voting_types VALUES (?,?)");
+
+            for (var key in initData['voting_types']) {
+                let data = initData['voting_types'][key];
+                stmt.run(data['type'],data['title']);
+            }
+
+            stmt.finalize();
+
+            console.log("done voting_types");
+
+            cbfunc('initJSONDone',true,'');
+
+        });
+
+    }else{
+        cbfunc('initJSONDone',false,'Database not initialized');
+    }
+};
+
+/**
+ * Load Authorization Manifest
+ * @param JSONdata authorization manifest JSON object
+ */
+exports.loadAuthorizationManifest= function(JSONdata,cbfunc){
+    let JSONcontent = JSON.parse(JSONdata);
+    if(nodeId!=JSONcontent["node_id"]){
+        console.error(`Node id doesn't match`);
+        cbfunc('initAuthDone',false,`Node id doesn't match`);
+    }else{
+
+        machineKey = JSONcontent['machine_key'];
+        // TODO Set amqp url
+        cbfunc('initAuthDone',true,'');
+    }
 };
 
 /**

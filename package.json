@@ -21,6 +21,7 @@
   "dependencies": {
     "amqplib": "^0.5.2",
     "electron": "^3.0.8",
+    "node-rsa": "^1.0.1",
     "sqlite3": "^4.0.4"
   },
   "devDependencies": {

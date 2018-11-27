@@ -29,7 +29,21 @@ function createWindow () {
     });
 
     ipcMain.on('initDb',function (event,arg) {
-        Database.init(arg,dbLoaded);
+        Database.setupTable(sendStatus);
+    })
+
+    ipcMain.on('loadDb',function (event,arg) {
+        Database.init(arg,sendStatus);
+    })
+
+    ipcMain.on('loadAuth',function (event,arg) {
+        let authFile = Database.loadJSON(arg);
+        Database.loadAuthorizationManifest(authFile,sendStatus);
+    })
+
+    ipcMain.on('initManifest',function (event,arg) {
+        let configFile = Database.loadJSON(arg);
+        Database.loadInitManifest(configFile,sendStatus);
     })
 
     ipcMain.on('publish', function (queue, msg) {
@@ -63,10 +77,9 @@ app.on('activate', () => {
     }
 });
 
-function dbLoaded(success){
-    win.webContents.send('initDbDone',success);
+function sendStatus(msg,status,errMsg){
+    win.webContents.send(msg,status,errMsg);
 }
-
 /**
  * TODO Enable node (invoked after loading Authorization Mainfest)
  */

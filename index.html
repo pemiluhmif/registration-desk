@@ -16,9 +16,26 @@ and Electron <script>document.write(process.versions.electron)</script>.
 <div>
     <h1>Test DB</h1>
     <input id="dbLoc" placeholder="sample.db"/>
-    <button id="btn-load">Load DB</button>
+    <button id="btn-load-db">Load DB</button>
+    <button id="btn-init-db">Init DB</button>
     <h2>Status</h2>
-    <p id="statusLoc"></p>
+    <p id="DBStatusLoc"></p>
+</div>
+
+<div>
+    <h1>Load manifest</h1>
+    <input id="manifestLoc" placeholder="sample.json"/>
+    <button id="btn-load-manifest">Load JSON</button>
+    <h2>Status</h2>
+    <p id="manifestStatusLoc"></p>
+</div>
+
+<div>
+    <h1>Load auth</h1>
+    <input id="authLoc" placeholder="sample.json"/>
+    <button id="btn-load-auth">Load Auth</button>
+    <h2>Status</h2>
+    <p id="authStatusLoc"></p>
 </div>
 
 
@@ -28,9 +45,24 @@ and Electron <script>document.write(process.versions.electron)</script>.
     const Messaging = require("./messaging");
     const ipcRenderer = require('electron').ipcRenderer;
 
-    document.getElementById("btn-load").addEventListener('click',function () {
+    document.getElementById("btn-load-db").addEventListener('click',function () {
        alert("Preparing to Load DB");
-       ipcRenderer.send("initDb",document.getElementById("dbLoc").value);
+       ipcRenderer.send("loadDb",document.getElementById("dbLoc").value);
+    });
+
+    document.getElementById("btn-init-db").addEventListener('click',function () {
+        alert("Preparing to init DB");
+        ipcRenderer.send("initDb",document.getElementById("dbLoc").value);
+    });
+
+    document.getElementById("btn-load-manifest").addEventListener('click',function () {
+        alert("Preparing to Load manifest");
+        ipcRenderer.send("initManifest",document.getElementById("manifestLoc").value);
+    });
+
+    document.getElementById("btn-load-auth").addEventListener('click',function () {
+        alert("Preparing to Load auth");
+        ipcRenderer.send("loadAuth",document.getElementById("authLoc ").value);
     });
 
     document.querySelector('#btn-queue').addEventListener('click', function() {
@@ -38,11 +70,35 @@ and Electron <script>document.write(process.versions.electron)</script>.
         ipcRenderer.send("publish", Messaging.EX_VOTER_QUEUED, JSON.stringify({nim: document.getElementById("nim").value}));
     });
 
-    ipcRenderer.on('initDbDone',function (event,status) {
+    ipcRenderer.on('loadDbDone',function (event,status,errmsg) {
         if(status){
-            document.getElementById("statusLoc").innerHTML = "Sukses";
+            document.getElementById("DBStatusLoc").innerHTML = "DB loaded";
         }else{
-            document.getElementById("statusLoc").innerHTML = "Gagal";
+            document.getElementById("DBStatusLoc").innerHTML = "Error : " + errmsg;
+        }
+    })
+
+    ipcRenderer.on('initDbDone',function (event,status,errmsg) {
+        if(status){
+            document.getElementById("DBStatusLoc").innerHTML = "DB initialized";
+        }else{
+            document.getElementById("DBStatusLoc").innerHTML = "Error : " + errmsg;
+        }
+    })
+
+    ipcRenderer.on('initJSONDone',function (event,status,errmsg) {
+        if(status){
+            document.getElementById("manifestStatusLoc").innerHTML = "Sukses";
+        }else{
+            document.getElementById("manifestStatusLoc").innerHTML = "Error : " + errmsg;
+        }
+    })
+
+    ipcRenderer.on('initAuthDone',function (event,status,errmsg) {
+        if(status){
+            document.getElementById("authStatusLoc").innerHTML = "Sukses";
+        }else{
+            document.getElementById("authStatusLoc").innerHTML = "Error : " + errmsg;
         }
     })
 </script>
