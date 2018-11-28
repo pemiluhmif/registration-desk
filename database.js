@@ -87,18 +87,38 @@ exports.loadJSON = function(fileName){
  */
 exports.getConfig = function (key) {
     if(db!=null){
-        if(key==="amqp_url"){
-            return amqpUrl;
-        }else if(key==="machine_key"){
-            return machineKey;
-        }else{
-            let stmt  = db.prepare("SElECT value FROM config WHERE key = ?");
-            let data = stmt.get(key);
-            if(data===undefined){
-                return null;
-            }else {
-                return stmt.get(key)['value'];
-            }
+        let stmt;
+        let data;
+
+        switch(key){
+            case "amqp_url":
+                return amqpUrl;
+            case "machine_key":
+                return machineKey;
+            case "candidates":
+                stmt  = db.prepare("SElECT * FROM candidates");
+                data = stmt.all();
+                if(data===undefined){
+                    return null;
+                }else {
+                    return data;
+                }
+            case "voting_types":
+                stmt  = db.prepare("SElECT * FROM voting_types");
+                data = stmt.all();
+                if(data===undefined){
+                    return null;
+                }else {
+                    return data;
+                }
+            default:
+                stmt  = db.prepare("SElECT value FROM config WHERE key = ?");
+                data = stmt.get(key);
+                if(data===undefined){
+                    return null;
+                }else {
+                    return data['value'];
+                }
         }
     }else{
         console.error("DB not loaded");
