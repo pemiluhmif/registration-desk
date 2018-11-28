@@ -165,6 +165,18 @@ exports.loadInitManifest = function(initDataRaw,cbfunc) {
         );
         `);
 
+
+        db.exec('DROP TABLE IF EXISTS candidates');
+        db.exec(`CREATE TABLE IF NOT EXISTS candidates (
+            candidate_no INTEGER NOT NULL,
+            voting_type TEXT NOT NULL,
+            name TEXT NOT NULL,
+            NIM INTEGER NOT NULL,
+            image_file_path TEXT NOT NULL,
+            PRIMARY KEY (candidate_no, voting_type)
+        );
+        `);
+
         console.log("Trying to load JSON config");
 
 
@@ -217,6 +229,19 @@ exports.loadInitManifest = function(initDataRaw,cbfunc) {
         }
 
         console.log("done voting_types");
+
+        stmt = db.prepare("INSERT INTO candidates VALUES (?,?,?,?,?)");
+
+        for (var key in initData['candidates']) {
+            let data = initData['candidates'][key];
+            stmt.run(data['candidate_no'],
+                data['voting_type'],
+                data['name'],
+                data['nim'],
+                data['image_url']);
+        }
+
+        console.log("done candidates");
 
         cbfunc('loadInitManifest',true,'');
     }else{
