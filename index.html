@@ -72,7 +72,7 @@ and Electron <script>document.write(process.versions.electron)</script>.
         alert("Voter serving on " + nodeId);
     });
 
-    ipcRenderer.on('loadDbDone',function (event,status,errmsg) {
+    ipcRenderer.on('init',function (event,status,errmsg) {
         if(status){
             document.getElementById("DBStatusLoc").innerHTML = "DB loaded";
         }else{
@@ -80,7 +80,7 @@ and Electron <script>document.write(process.versions.electron)</script>.
         }
     });
 
-    ipcRenderer.on('initDbDone',function (event,status,errmsg) {
+    ipcRenderer.on('setupTable',function (event,status,errmsg) {
         if(status){
             document.getElementById("DBStatusLoc").innerHTML = "DB initialized";
         }else{
@@ -88,7 +88,7 @@ and Electron <script>document.write(process.versions.electron)</script>.
         }
     });
 
-    ipcRenderer.on('initJSONDone',function (event,status,errmsg) {
+    ipcRenderer.on('loadInitManifest',function (event,status,errmsg) {
         if(status){
             document.getElementById("manifestStatusLoc").innerHTML = "Sukses";
         }else{
@@ -96,7 +96,7 @@ and Electron <script>document.write(process.versions.electron)</script>.
         }
     });
 
-    ipcRenderer.on('initAuthDone',function (event,status,errmsg) {
+    ipcRenderer.on('loadAuthorizationManifest',function (event,status,errmsg) {
         if(status){
             document.getElementById("authStatusLoc").innerHTML = "Sukses";
         }else{
