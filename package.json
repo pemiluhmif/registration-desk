@@ -22,7 +22,6 @@
     "amqplib": "^0.5.2",
     "better-sqlite3": "^5.0.1",
     "electron": "^3.0.8",
-    "node-rsa": "^1.0.1",
     "uuid4": "^1.1.4",
     "uuidv4": "^2.0.0"
   },
