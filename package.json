@@ -19,7 +19,10 @@
   "homepage": "https://github.com/pemiluhmif/registration-desk#readme",
   "dependencies": {
     "amqplib": "^0.5.2",
+    "ejs": "^2.6.1",
     "electron": "^3.0.7",
+    "express": "^4.16.4",
+    "sweetalert": "^2.1.2",
     "uuid4": "^1.1.4",
     "uuidv4": "^2.0.0"
   }
