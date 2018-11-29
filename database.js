@@ -20,23 +20,26 @@ var amqpUrl = null;
  * Initializes database object
  * Load SQLite database
  * @param dbUrl SQLite database URL
- * @param cbfunc callback function when done with parameter type, success, message
  */
-exports.init = function(dbUrl,cbfunc) {
+exports.init = function(dbUrl) {
     try {
         db = new sqlite3(dbUrl);
-        cbfunc('init', true, '');
+        return {
+            "status": true
+        };
     } catch (err) {
         console.error(err.message);
-        cbfunc('init',false,err.message);
+        return {
+            "status": false,
+            "msg": err.message
+        };
     }
 };
 
 /**
  * Setup table for first time use
- * @param cbfunc callback function when done with parameter type, success, message
  */
-exports.setupTable = function(cbfunc) {
+exports.setupTable = function() {
     console.log("Setting up table");
 
     try {
@@ -66,9 +69,14 @@ exports.setupTable = function(cbfunc) {
                         VALUES(?,?,?)`).run(nodeId, originHash, generateSig(originHash));
         }
 
-        cbfunc("setupTable",true,"");
+        return {
+            "status":true
+        }
     } catch (e) {
-        cbfunc("setupTable",false,e.message);
+        return{
+            "status":false,
+            "msg":e.message
+        }
     }
 };
 
@@ -159,8 +167,7 @@ exports.close = function() {
  * Load Initialization Manifest and persists it to SQLite
  * @param initData initialization manifest JSON object
  */
-exports.loadInitManifest = function(initDataRaw,cbfunc) {
-    // TODO persists
+exports.loadInitManifest = function(initDataRaw) {
     if(db!=null){
         db.exec(`DROP TABLE IF EXISTS config;`);
         db.exec(`CREATE TABLE config (
@@ -198,8 +205,6 @@ exports.loadInitManifest = function(initDataRaw,cbfunc) {
         `);
 
         console.log("Trying to load JSON config");
-
-
 
         let initData = JSON.parse(initDataRaw);
 
@@ -263,26 +268,36 @@ exports.loadInitManifest = function(initDataRaw,cbfunc) {
 
         console.log("done candidates");
 
-        cbfunc('loadInitManifest',true,'');
+        return {
+            "status": true
+        };
     }else{
-        cbfunc('loadInitManifest',false,'Database not initialized');
+        return {
+            "status": false,
+            "msg": "Database not initialized"
+        };
     }
 };
 
 /**
  * Load Authorization Manifest
  * @param JSONdata authorization manifest JSON object
- * @param cbfunc callback function when done with parameter type, success, message
  */
-exports.loadAuthorizationManifest= function(JSONdata,cbfunc){
+exports.loadAuthorizationManifest= function(JSONdata){
     let JSONcontent = JSON.parse(JSONdata);
     if(nodeId!=JSONcontent["node_id"]){
         console.error(`Node id doesn't match`);
-        cbfunc('loadAuthorizationManifest',false,`Node id doesn't match`);
+        return {
+            "status": false,
+            "msg": "Node id doesn't match"
+        };
     }else{
         machineKey = JSONcontent['machine_key'];
         amqpUrl = JSONcontent['amqp_url'];
-        cbfunc('loadAuthorizationManifest',true,'');
+
+        return {
+            "status": true
+        };
     }
 };
 
