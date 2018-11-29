@@ -37,7 +37,9 @@ function createWindow () {
     });
 
     ipcMain.on('initDb',function (event,arg) {
-        Database.setupTable(sendStatus);
+        let data = Database.setupTable();
+
+        event.sender.send("setupTable",data['status'],data['msg']);
 
         // let testJSON={
         //         "name": "NAME",
@@ -51,17 +53,29 @@ function createWindow () {
 
 
     ipcMain.on('loadDb',function (event,arg) {
-        Database.init(arg,sendStatus);
+        let data = Database.init(arg);
+        event.sender.send("init",data['status'],data['msg']);
     });
 
     ipcMain.on('loadAuth',function (event,arg) {
         let authFile = Database.loadJSON(arg);
-        Database.loadAuthorizationManifest(authFile,sendStatus);
+        try {
+            let data = Database.loadAuthorizationManifest(authFile);
+            event.sender.send("loadAuthorizationManifest", data['status'], data['msg']);
+        } catch (e) {
+            event.sender.send("loadAuthorizationManifest", false, e.message);
+        }
     });
 
     ipcMain.on('initManifest',function (event,arg) {
         let configFile = Database.loadJSON(arg);
-        Database.loadInitManifest(configFile,sendStatus);
+
+        try {
+            let data = Database.loadInitManifest(configFile);
+            event.sender.send("loadInitManifest", data['status'], data['msg']);
+        } catch (e) {
+            event.sender.send("loadInitManifest", false, e.message);
+        }
     });
 
     ipcMain.on('publish', function (self, queue, msg) {
@@ -103,9 +117,6 @@ app.on('activate', () => {
     }
 });
 
-function sendStatus(msg,status,errMsg){
-    win.webContents.send(msg,status,errMsg);
-}
 /**
  * TODO Enable node (invoked after loading Authorization Mainfest)
  */
