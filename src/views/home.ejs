@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+    <% include partials/head %>
+    <body>
+        <div id="loading" style="display: none">
+            <% include partials/loading %>
+        </div>
+        <div class="container">
+            <div id="home">
+                <div class="level">
+                    <div class="level-item">
+                        <img src="/img/logo-full.png" alt="logo" id="home-logo">
+                    </div>
+                </div>
+                <div class="level">
+                    <div class="level-item">
+                        <div>
+                            <div>
+                                <input type="text" class="input" id="nim" placeholder="Masukkan NIM Anda">
+                            </div>
+                            <div>
+                                <button class="button" id="home-btn">Log In</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <% include partials/footer %>
+        </div>
+    </body>
+    <script src="/js/process.js"></script>
+</html>

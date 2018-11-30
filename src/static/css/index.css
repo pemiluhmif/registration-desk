@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css?family=Lato');
+@import 'bulma.min.css';
+@import 'home.css';
+
+body {
+    font-family: 'Lato', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: url('./../img/main-bg.png');
+}
+
+#loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    z-index: 999;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.315);
+}
+/* #loading > div {
+    margin: 0 auto;
+} */
+
+.profile {
+    cursor: pointer;
+    margin: 15px;
+    margin-bottom: 0;
+    width: 22vw;
+    text-align: center;
+}
+
+.confirm-choose {
+    display: none;
+    position: absolute;
+    z-index: 999;
+    height: 100vh;
+    width: 100vw;
+    top: 0;
+    background: rgba(0, 0, 0, 0.2);
+}
+.confirm-choose .notification {
+    width: 50vw;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    top: 30%;
+    text-align: center;
+    margin: 0 auto;
+}
+.confirm-choose .level-item > button {
+    width: 85%;
+}
+
+.timer {
+    width: 150px;
+    left: 30px;
+    position: absolute;
+}

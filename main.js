@@ -8,6 +8,9 @@ const uuid4 = require('uuid4');
 const RMQ_URL = "amqp://gxqzgwoj:hXDR_7ciQm93nouQGRC_YGLPbIYnFCid@mustang.rmq.cloudamqp.com/gxqzgwoj";
 let NODE_ID = "reg01";
 
+// Start the express app
+let serv = require('./src/app');
+
 var voter_served_callback = null;
 
 var count = 1;
@@ -18,14 +21,14 @@ var count2 = 12;
 let win;
 
 function createWindow () {
-    // Create the browser window.
-    win = new BrowserWindow({ width: 800, height: 600 });
-
-    // and load the index.html of the app.
-    win.loadFile('index.html');
-
-    // Open the DevTools.
-    win.webContents.openDevTools()
+    win = new BrowserWindow({
+        width: 1024,
+        height: 600,
+        resizable: true
+    })
+    // win.setMenu(null);
+    win.loadURL('http://localhost:5000/');
+    win.focus();
 
     // Emitted when the window is closed.
     win.on('closed', () => {
