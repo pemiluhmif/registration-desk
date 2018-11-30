@@ -1,12 +1,9 @@
-const { app, BrowserWindow } = require('electron');
+const { dialog, app, BrowserWindow } = require('electron');
 const Messaging = require('./messaging');
 const Database = require('./database');
 const ipcMain = require('electron').ipcMain;
-const ipcRenderer = require('electron').ipcRenderer;
+const yargs = require('yargs');
 const uuid4 = require('uuid4');
-
-const RMQ_URL = "amqp://gxqzgwoj:hXDR_7ciQm93nouQGRC_YGLPbIYnFCid@mustang.rmq.cloudamqp.com/gxqzgwoj";
-let NODE_ID = "reg01";
 
 // Start the express app
 let serv = require('./src/app');
@@ -36,48 +33,6 @@ function createWindow () {
         win = null
     });
 
-    ipcMain.on('initDb',function (event,arg) {
-        let data = Database.setupTable();
-
-        event.sender.send("setupTable",data['status'],data['msg']);
-
-        // let testJSON={
-        //         "name": "NAME",
-        //         "nim": "13517999",
-        //         "last_queued": "2018-11-27 15:26:09",
-        //         "voted": "1",
-        //         "last_modified": new Date().toISOString().slice(0, 19).replace('T', ' ')
-        // };
-        // Database.performPersonDataUpdate(1,testJSON);
-    });
-
-
-    ipcMain.on('loadDb',function (event,arg) {
-        let data = Database.init(arg);
-        event.sender.send("init",data['status'],data['msg']);
-    });
-
-    ipcMain.on('loadAuth',function (event,arg) {
-        let authFile = Database.loadJSON(arg);
-        try {
-            let data = Database.loadAuthorizationManifest(authFile);
-            event.sender.send("loadAuthorizationManifest", data['status'], data['msg']);
-        } catch (e) {
-            event.sender.send("loadAuthorizationManifest", false, e.message);
-        }
-    });
-
-    ipcMain.on('initManifest',function (event,arg) {
-        let configFile = Database.loadJSON(arg);
-
-        try {
-            let data = Database.loadInitManifest(configFile);
-            event.sender.send("loadInitManifest", data['status'], data['msg']);
-        } catch (e) {
-            event.sender.send("loadInitManifest", false, e.message);
-        }
-    });
-
     ipcMain.on('publish', function (self, queue, msg) {
         Messaging.publish(queue, msg);
     });
@@ -87,18 +42,79 @@ function createWindow () {
     });
 
     ipcMain.on('incoming_voter', function (event, voter_name, voter_nim) {
-        incoming_voter(voter_name, voter_nim, function(nodeId) {
-            event.sender.send("voter-served", nodeId);
-        });
-    });
+        let ret = checkNIM(voter_nim);
+        if(ret['status']){
+            incoming_voter(voter_name, voter_nim, function(nodeId) {
+                event.sender.send("voter-served", nodeId);
+                Database.updatePersonData(voter_nim,"last_queued",new Date().toISOString().slice(0, 19).replace('T', ' '));
+            });
+        }else{
+            event.sender.send("invalid-voter",ret['msg']);
+        }
 
-    enableNode(NODE_ID, "hash", "", RMQ_URL);
+    });
 }
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+app.on('ready', ()=>{
+    let argv = yargs.usage("Usage: $0 [options]")
+        .example("$0 -i --setting=myManifest.json --auth=myAuth.json --db=myDb.db")
+        .example("$0")
+        .alias("h","help")
+        .alias("v","version")
+        .alias("i","initial")
+        .boolean("i")
+        .describe("i","Initial load (load JSON config)")
+        .default("config","manifest.json")
+        .default("auth","auth.json")
+        .default("db","pemilu.db")
+        .argv;
+
+    let status = Database.init(argv.db);
+
+    if(status["status"]){
+        // Initial config
+        if(argv.initial){
+            try {
+                let ret = Database.loadInitManifest(Database.loadJSON(argv.config));
+                if(ret['status']===false){
+                    dialog.showErrorBox("Error on JSON (manifest) load",ret['msg']);
+                    process.exit(1);
+                }
+                ret = Database.loadAuthorizationManifest(Database.loadJSON(argv.auth));
+                if(ret['status']===false){
+                    dialog.showErrorBox("Error on JSON (auth) load",ret['msg']);
+                    process.exit(1);
+                }
+                Database.setupTable();
+            } catch (e) {
+                dialog.showErrorBox("Error on JSON load",e.message);
+                console.error(e.message);
+                process.exit(1);
+            }
+        }
+
+        // Setup node
+        try{
+            enableNode(Database.getConfig("node_id"),
+                Database.getConfig("origin_hash"),
+                Database.getConfig("machine_key"),
+                Database.getConfig("amqp_url"));
+        }catch (e) {
+            dialog.showErrorBox("Error on node communication setup",e.message);
+            console.error(e.message);
+            process.exit(1);
+        }
+
+        createWindow();
+
+    }else{
+        dialog.showErrorBox("Error on init",status["msg"]);
+    }
+
+});
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
@@ -121,8 +137,6 @@ app.on('activate', () => {
  * TODO Enable node (invoked after loading Authorization Mainfest)
  */
 function enableNode(nodeId, originHash, machineKey, amqpUrl) {
-    NODE_ID = nodeId;
-
     // Connect to broker
     Messaging.init(nodeId, Messaging.NODE_TYPE_REGDESK);
     Messaging.connect(amqpUrl, function() {
@@ -146,7 +160,7 @@ function incoming_voter(voterName, voterNIM, callback) {
 
     // Publish to VOTER_QUEUED
     let payload = {
-        "node_id": NODE_ID,
+        "node_id": Database.getConfig("node_id"),
         "request_id": uuid4(),
         "voter_name": voterName,
         "voter_nim": voterNIM,
@@ -156,4 +170,19 @@ function incoming_voter(voterName, voterNIM, callback) {
     Messaging.publish(Messaging.EX_VOTER_QUEUED, '', JSON.stringify(payload), null);
 
     voter_served_callback = callback;
+}
+
+function checkNIM(NIM){
+    let voterData = Database.getVoters(NIM);
+
+    if(voterData!=null){
+        if(voterData.voted===0){
+            return {"status":true};
+        }else{
+            // TODO Check if last_queued is long enough
+            return {"status":false,"msg":"Sudah pernah voting"};
+        }
+    }else{
+        return {"status":false,"msg":"Tidak terdaftar pada DPT"};
+    }
 }

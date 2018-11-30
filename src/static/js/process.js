@@ -6,6 +6,11 @@ document.querySelector('#home-btn').addEventListener('click', function() {
     ipcRenderer.send("incoming_voter", "Name", document.getElementById("nim").value);
 });
 
+ipcRenderer.on('invalid-voter',(event,msg)=>{
+    document.querySelector('#loading').style.display = 'none';
+    alert(msg);
+});
+
 ipcRenderer.on('voter-served', function (self, nodeId) {
     document.querySelector('#nim').value = "";
     document.querySelector('#loading').style.display = 'none';
