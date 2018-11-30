@@ -143,7 +143,15 @@ function enableNode(nodeId, originHash, machineKey, amqpUrl) {
         Messaging.setMessageListener(Messaging.EX_VOTER_SERVED, function(msg, ch) {
             let data = JSON.parse(msg.content.toString());
             if(voter_served_callback != null) voter_served_callback(data.node_id);
-        })
+        });
+        Messaging.setMessageListener(Messaging.EX_VOTE_CASTED,function (msg,ch) {
+            let data = JSON.parse(msg.content.toString());
+            console.log("Receive vote data");
+            if(data.node_id!==Database.getConfig("node_id")) {
+                Database.performVoteDataUpdate(Database.getConfig("node_id"), data.vote_payload, data.last_signature);
+            }
+            ch.ack(msg);
+        });
     });
 
     Database.authorize(machineKey);
