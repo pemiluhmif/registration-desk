@@ -13,9 +13,6 @@ let serv = require('./src/app');
 
 var voter_served_callback = null;
 
-var count = 1;
-var count2 = 12;
-
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let win;

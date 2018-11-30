@@ -44,7 +44,7 @@ exports.setupTable = function() {
 
     try {
         db.exec(`CREATE TABLE IF NOT EXISTS vote_record (
-            vote_id INTEGER NOT NULL PRIMARY KEY,
+            vote_id TEXT NOT NULL PRIMARY KEY,
             node_id TEXT NOT NULL,
             previous_signature BLOB NOT NULL,
             voted_candidate TEXT NOT NULL,
@@ -61,8 +61,8 @@ exports.setupTable = function() {
 
         let row = db.prepare("SELECT Count(*) FROM last_signature WHERE node_id = ?").get(nodeId);
         let dbCount = row['Count(*)'];
-        if (dbCount == 0) {
-            console.log("Empty last_signature, inserting origin")
+        if (dbCount === 0) {
+            console.log("Empty last_signature, inserting origin");
             // Inserting origin
             db.prepare(`INSERT INTO
                         last_signature(node_id,last_signature,last_signature_signature) 
@@ -103,14 +103,6 @@ exports.getConfig = function (key) {
                 return amqpUrl;
             case "machine_key":
                 return machineKey;
-            case "candidates":
-                stmt  = db.prepare("SElECT * FROM candidates");
-                data = stmt.all();
-                if(data===undefined){
-                    return null;
-                }else {
-                    return data;
-                }
             case "voting_types":
                 stmt  = db.prepare("SElECT * FROM voting_types");
                 data = stmt.all();
@@ -136,16 +128,26 @@ exports.getConfig = function (key) {
 
 exports.getLastSignature = function() {
     if(db!=null && nodeId!=null){
-        let stmt  = db.prepare("SElECT value FROM config WHERE key = ?");
-        let data = stmt.get(key);
+        let stmt  = db.prepare("SElECT last_signature FROM last_signature WHERE node_id = ?");
+        let data = stmt.get(nodeId);
         if(data===undefined){
             return null;
         }else {
-            return stmt.get(key)['value'];
+            return data['last_signature'];
         }
     }
 };
 
+exports.getCandidates = function (type) {
+    let stmt  = db.prepare("SElECT * FROM candidates WHERE voting_type=?");
+    let data = stmt.all(type);
+    if(data===undefined){
+        return null;
+    }else {
+        return data;
+    }
+
+};
 
 /**
  * generate signature
@@ -285,7 +287,7 @@ exports.loadInitManifest = function(initDataRaw) {
  */
 exports.loadAuthorizationManifest= function(JSONdata){
     let JSONcontent = JSON.parse(JSONdata);
-    if(nodeId!=JSONcontent["node_id"]){
+    if(nodeId!==JSONcontent["node_id"]){
         console.error(`Node id doesn't match`);
         return {
             "status": false,
@@ -393,7 +395,6 @@ exports.performPersonDataUpdate = function(node_id, person_records) {
             let voteDate = new Date(voteData['last_modified'] );
             let dataDate = new Date(dataInsert['last_modified']);
             if(voteDate < dataDate){
-                console.log("in");
                 stmtUpdate.run(dataInsert['name'],
                     dataInsert['last_queued'],
                     dataInsert['voted'],
