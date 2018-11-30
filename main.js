@@ -13,11 +13,14 @@ let serv = require('./src/app');
 
 var voter_served_callback = null;
 
+var count = 1;
+var count2 = 12;
+
+// Keep a global reference of the window object, if you don't, the window will
+// be closed automatically when the JavaScript object is garbage collected.
 let win;
 
-app.on('ready', function() {
-    'use strict';
-
+function createWindow () {
     win = new BrowserWindow({
         width: 1024,
         height: 600,
@@ -26,6 +29,43 @@ app.on('ready', function() {
     // win.setMenu(null);
     win.loadURL('http://localhost:5000/');
     win.focus();
+
+    // Emitted when the window is closed.
+    win.on('closed', () => {
+        // Dereference the window object, usually you would store windows
+        // in an array if your app supports multi windows, this is the time
+        // when you should delete the corresponding element.
+        Messaging.close();
+        win = null
+    });
+
+    ipcMain.on('initDb',function (event,arg) {
+        Database.setupTable(sendStatus);
+
+        // let testJSON={
+        //         "name": "NAME",
+        //         "nim": "13517999",
+        //         "last_queued": "2018-11-27 15:26:09",
+        //         "voted": "1",
+        //         "last_modified": new Date().toISOString().slice(0, 19).replace('T', ' ')
+        // };
+        // Database.performPersonDataUpdate(1,testJSON);
+    });
+
+
+    ipcMain.on('loadDb',function (event,arg) {
+        Database.init(arg,sendStatus);
+    });
+
+    ipcMain.on('loadAuth',function (event,arg) {
+        let authFile = Database.loadJSON(arg);
+        Database.loadAuthorizationManifest(authFile,sendStatus);
+    });
+
+    ipcMain.on('initManifest',function (event,arg) {
+        let configFile = Database.loadJSON(arg);
+        Database.loadInitManifest(configFile,sendStatus);
+    });
 
     ipcMain.on('publish', function (self, queue, msg) {
         Messaging.publish(queue, msg);
@@ -42,18 +82,33 @@ app.on('ready', function() {
     });
 
     enableNode(NODE_ID, "hash", "", RMQ_URL);
-});
+}
+
+// This method will be called when Electron has finished
+// initialization and is ready to create browser windows.
+// Some APIs can only be used after this event occurs.
+app.on('ready', createWindow);
+
+// Quit when all windows are closed.
 app.on('window-all-closed', () => {
+    // On macOS it is common for applications and their menu bar
+    // to stay active until the user quits explicitly with Cmd + Q
     if (process.platform !== 'darwin') {
         app.quit()
     }
 });
+
 app.on('activate', () => {
+    // On macOS it's common to re-create a window in the app when the
+    // dock icon is clicked and there are no other windows open.
     if (win === null) {
         createWindow()
     }
 });
 
+function sendStatus(msg,status,errMsg){
+    win.webContents.send(msg,status,errMsg);
+}
 /**
  * TODO Enable node (invoked after loading Authorization Mainfest)
  */

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Hello World!</title>
+</head>
+<body>
+<h1>Hello World!</h1>
+We are using node <script>document.write(process.versions.node)</script>,
+Chrome <script>document.write(process.versions.chrome)</script>,
+and Electron <script>document.write(process.versions.electron)</script>.
+
+<input id="nim" placeholder="NIM" />
+<button id="btn-queue">Queue!</button>
+
+<div>
+    <h1>Test DB</h1>
+    <input id="dbLoc" placeholder="sample.db"/>
+    <button id="btn-load-db">Load DB</button>
+    <button id="btn-init-db">setup DB</button>
+    <h2>Status</h2>
+    <p id="DBStatusLoc"></p>
+</div>
+
+<div>
+    <h1>Load manifest</h1>
+    <input id="manifestLoc" placeholder="sample.json"/>
+    <button id="btn-load-manifest">Load JSON</button>
+    <h2>Status</h2>
+    <p id="manifestStatusLoc"></p>
+</div>
+
+<div>
+    <h1>Load auth</h1>
+    <input id="authLoc" placeholder="sample.json"/>
+    <button id="btn-load-auth">Load Auth</button>
+    <h2>Status</h2>
+    <p id="authStatusLoc"></p>
+</div>
+
+
+</body>
+
+<script type="text/javascript">
+    const ipcRenderer = require('electron').ipcRenderer;
+
+    document.getElementById("btn-load-db").addEventListener('click',function () {
+       alert("Preparing to Load DB");
+       ipcRenderer.send("loadDb",document.getElementById("dbLoc").value);
+    });
+
+    document.getElementById("btn-init-db").addEventListener('click',function () {
+        alert("Preparing to init DB");
+        ipcRenderer.send("initDb",document.getElementById("dbLoc").value);
+    });
+
+    document.getElementById("btn-load-manifest").addEventListener('click',function () {
+        alert("Preparing to Load manifest");
+        ipcRenderer.send("initManifest",document.getElementById("manifestLoc").value);
+    });
+
+    document.getElementById("btn-load-auth").addEventListener('click',function () {
+        alert("Preparing to Load auth");
+        ipcRenderer.send("loadAuth",document.getElementById("authLoc").value);
+    });
+
+    document.querySelector('#btn-queue').addEventListener('click', function() {
+        ipcRenderer.send("incoming_voter", "Ucup", document.getElementById("nim").value);
+    });
+
+    ipcRenderer.on('voter-served', function (self, nodeId) {
+        alert("Voter serving on " + nodeId);
+    });
+
+    ipcRenderer.on('init',function (event,status,errmsg) {
+        if(status){
+            document.getElementById("DBStatusLoc").innerHTML = "DB loaded";
+        }else{
+            document.getElementById("DBStatusLoc").innerHTML = "Error : " + errmsg;
+        }
+    });
+
+    ipcRenderer.on('setupTable',function (event,status,errmsg) {
+        if(status){
+            document.getElementById("DBStatusLoc").innerHTML = "DB initialized";
+        }else{
+            document.getElementById("DBStatusLoc").innerHTML = "Error : " + errmsg;
+        }
+    });
+
+    ipcRenderer.on('loadInitManifest',function (event,status,errmsg) {
+        if(status){
+            document.getElementById("manifestStatusLoc").innerHTML = "Sukses";
+        }else{
+            document.getElementById("manifestStatusLoc").innerHTML = "Error : " + errmsg;
+        }
+    });
+
+    ipcRenderer.on('loadAuthorizationManifest',function (event,status,errmsg) {
+        if(status){
+            document.getElementById("authStatusLoc").innerHTML = "Sukses";
+        }else{
+            document.getElementById("authStatusLoc").innerHTML = "Error : " + errmsg;
+        }
+    });
+</script>
+</html>
