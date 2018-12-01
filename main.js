@@ -168,7 +168,8 @@ function enableNode(nodeId, originHash, machineKey, amqpUrl) {
             let data = JSON.parse(msg.content.toString());
             console.log("Receive vote data");
             if(data.node_id!==Database.getConfig("node_id")) {
-                Database.performVoteDataUpdate(Database.getConfig("node_id"), data.vote_payload, data.last_signature);
+                Database.performVoteDataUpdate(data.node_id, data.vote_payload);
+                Database.performSigDataUpdate(data.node_id, data.last_signature);
                 Database.updatePersonData(data.voter_nim,"voted",1);
                 Database.updatePersonData(data.voter_nim,"last_queued",null);
             }
