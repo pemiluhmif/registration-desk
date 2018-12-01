@@ -60,7 +60,7 @@ function createWindow () {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', ()=>{
-    let argv = yargs.usage("Usage: $0 [options]")
+    let yargsSetting = yargs.usage("Usage: $0 [options]")
         .example("$0 -i --setting=myManifest.json --auth=myAuth.json --db=myDb.db")
         .example("$0")
         .alias("h","help")
@@ -70,8 +70,14 @@ app.on('ready', ()=>{
         .describe("i","Initial load (load JSON config)")
         .default("config","manifest.json")
         .default("auth","auth.json")
-        .default("db","pemilu.db")
-        .argv;
+        .default("db","pemilu.db");
+
+    let argv;
+    if(app.isPackaged){
+        argv = yargsSetting.parse(process.argv.slice(1));
+    }else{
+        argv = yargsSetting.argv;
+    }
 
     let status = Database.init(argv.db);
 
