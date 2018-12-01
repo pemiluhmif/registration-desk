@@ -41,10 +41,10 @@ function createWindow () {
         Messaging.setMessageListener(queue, callback);
     });
 
-    ipcMain.on('incoming_voter', function (event, voter_name, voter_nim) {
+    ipcMain.on('incoming_voter', function (event, voter_nim) {
         let ret = checkNIM(voter_nim);
         if(ret['status']){
-            incoming_voter(voter_name, voter_nim, function(nodeId) {
+            incoming_voter(ret['name'], voter_nim, function(nodeId) {
                 event.sender.send("voter-served", nodeId);
 
                 // NOTE Line removed, last_queued handled on other channel
@@ -53,7 +53,6 @@ function createWindow () {
         }else{
             event.sender.send("invalid-voter",ret['msg']);
         }
-
     });
 }
 
@@ -210,7 +209,7 @@ function checkNIM(NIM){
 
     if(voterData!=null){
         if(voterData.voted===0){
-            return {"status":true};
+            return {"status":true, "name": voterData.name};
         }else{
             // TODO Check if last_queued is long enough
             return {"status":false,"msg":"Sudah pernah voting"};
