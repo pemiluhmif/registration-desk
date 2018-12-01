@@ -46,7 +46,9 @@ function createWindow () {
         if(ret['status']){
             incoming_voter(voter_name, voter_nim, function(nodeId) {
                 event.sender.send("voter-served", nodeId);
-                Database.updatePersonData(voter_nim,"last_queued",new Date().toISOString().slice(0, 19).replace('T', ' '));
+
+                // NOTE Line removed, last_queued handled on other channel
+                //Database.updatePersonData(voter_nim,"last_queued",new Date().toISOString().slice(0, 19).replace('T', ' '));
             });
         }else{
             event.sender.send("invalid-voter",ret['msg']);
@@ -150,10 +152,13 @@ function enableNode(nodeId, originHash, machineKey, amqpUrl) {
     // Connect to broker
     Messaging.init(nodeId, Messaging.NODE_TYPE_REGDESK);
     Messaging.connect(amqpUrl, function() {
+        // Reply channel
         Messaging.setMessageListener(Messaging.EX_VOTER_SERVED, function(msg, ch) {
             let data = JSON.parse(msg.content.toString());
             if(voter_served_callback != null) voter_served_callback(data.node_id);
         });
+
+        // Keeps track of casted vote
         Messaging.setMessageListener(Messaging.EX_VOTE_CASTED,function (msg,ch) {
             let data = JSON.parse(msg.content.toString());
             console.log("Receive vote data");
@@ -163,6 +168,15 @@ function enableNode(nodeId, originHash, machineKey, amqpUrl) {
                 Database.updatePersonData(data.voter_nim,"last_queued",null);
             }
             ch.ack(msg);
+        });
+
+        // Keeps track of queued voter
+        Messaging.setMessageListener(Messaging.EX_VOTER_QUEUED, (msg,ch)=>{
+            let data = JSON.parse(msg.content.toString());
+            console.log("Receive vote data");
+            if(data.node_id!==Database.getConfig("node_id")) {
+                Database.updatePersonData(data.voter_nim, "last_queued", Math.floor(Date.now() / 1000));
+            }
         });
     });
 
