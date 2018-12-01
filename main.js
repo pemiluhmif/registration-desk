@@ -175,6 +175,37 @@ function enableNode(nodeId, originHash, machineKey, amqpUrl) {
             console.log("Receive vote data");
             Database.updatePersonData(data.voter_nim, "last_queued", data.timestamp);
         });
+        Messaging.setMessageListener(Messaging.EX_REQUEST_DATA_BROADCAST, (msg,ch)=>{
+            let data = JSON.parse(msg.content.toString());
+            console.log(data);
+            let votes = Database.getVoteRecords();
+            let lastSigs = Database.getLastSignatures();
+            console.log(votes);
+            console.log(lastSigs);
+            let replyData = {
+                "node_id": Database.getConfig("node_id"),
+                "votes": votes,
+                "last_hashes": lastSigs
+                };
+            Messaging.sendToQueue(Messaging.EX_VOTE_DATA_REPLY+":"+data.node_id,JSON.stringify(replyData));
+        });
+        Messaging.setMessageListener(Messaging.EX_VOTE_DATA_REPLY,(msg,ch)=>{
+            let data = JSON.parse(msg.content.toString());
+
+            if(data.votes !== undefined){
+                data.votes.forEach((item)=>{
+                    Database.performVoteDataUpdate(data.node_id,item);
+                });
+            }
+
+            if(data.last_hashes!==undefined){
+                data.last_hashes.forEach((item)=>{
+                    Database.performSigDataUpdate(data.node_id,item);
+                });
+            }
+
+            console.log(data);
+        });
     });
 
     Database.authorize(machineKey);
@@ -205,7 +236,7 @@ function incoming_voter(voterName, voterNIM, callback) {
 }
 
 function checkNIM(NIM){
-    let voterData = Database.getVoters(NIM);
+    let voterData = Database.getVoter(NIM);
 
     if(voterData!=null){
         if(voterData.voted===0){

@@ -208,7 +208,7 @@ function assertDataManagementExchanges(ch) {
 
     ch.assertExchange(EX_VOTE_DATA_REPLY, 'topic', {durable: false});
 
-    ch.assertQueue(buildQueueName(EX_VOTE_DATA_REPLY), {durable: true, exclusive: true}, function(err, q) {
+    ch.assertQueue(buildQueueName(EX_VOTE_DATA_REPLY), {durable: true, exclusive: false}, function(err, q) {
         ch.bindQueue(q.queue, EX_VOTE_DATA_REPLY, '');
 
         ch.consume(q.queue, function(msg) {
@@ -221,7 +221,7 @@ function assertDataManagementExchanges(ch) {
 
     ch.assertExchange(EX_PERSON_DATA_REPLY, 'topic', {durable: false});
 
-    ch.assertQueue(buildQueueName(EX_PERSON_DATA_REPLY), {durable: true, exclusive: true}, function(err, q) {
+    ch.assertQueue(buildQueueName(EX_PERSON_DATA_REPLY), {durable: true, exclusive: false}, function(err, q) {
         ch.bindQueue(q.queue, EX_PERSON_DATA_REPLY, '');
 
         ch.consume(q.queue, function(msg) {
