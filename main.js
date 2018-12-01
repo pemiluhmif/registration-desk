@@ -83,17 +83,27 @@ app.on('ready', ()=>{
                     dialog.showErrorBox("Error on JSON (manifest) load",ret['msg']);
                     process.exit(1);
                 }
-                ret = Database.loadAuthorizationManifest(Database.loadJSON(argv.auth));
-                if(ret['status']===false){
-                    dialog.showErrorBox("Error on JSON (auth) load",ret['msg']);
-                    process.exit(1);
-                }
-                Database.setupTable();
             } catch (e) {
-                dialog.showErrorBox("Error on JSON load",e.message);
+                dialog.showErrorBox("Error on JSON (manifest) load",e.message);
                 console.error(e.message);
                 process.exit(1);
             }
+        }
+
+        // auth config
+        try {
+            ret = Database.loadAuthorizationManifest(Database.loadJSON(argv.auth));
+            if(ret['status']===false){
+                dialog.showErrorBox("Error on JSON (auth) load",ret['msg']);
+                process.exit(1);
+            }
+            if(argv.initial){
+                Database.setupTable();
+            }
+        } catch (e) {
+            dialog.showErrorBox("Error on JSON (auth) load",e.message);
+            console.error(e.message);
+            process.exit(1);
         }
 
         // Setup node
