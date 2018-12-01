@@ -174,9 +174,7 @@ function enableNode(nodeId, originHash, machineKey, amqpUrl) {
         Messaging.setMessageListener(Messaging.EX_VOTER_QUEUED, (msg,ch)=>{
             let data = JSON.parse(msg.content.toString());
             console.log("Receive vote data");
-            if(data.node_id!==Database.getConfig("node_id")) {
-                Database.updatePersonData(data.voter_nim, "last_queued", Math.floor(Date.now() / 1000));
-            }
+            Database.updatePersonData(data.voter_nim, "last_queued", data.timestamp);
         });
     });
 
@@ -198,6 +196,7 @@ function incoming_voter(voterName, voterNIM, callback) {
         "request_id": uuid4(),
         "voter_name": voterName,
         "voter_nim": voterNIM,
+        "timestamp": Math.floor(Date.now() / 1000),
         "reply": Messaging.getQueueName(Messaging.EX_VOTER_SERVED)
     };
 
