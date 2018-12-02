@@ -6,7 +6,7 @@ const yargs = require('yargs');
 const uuid4 = require('uuid4');
 
 // Start the express app
-let serv = require('./src/app');
+let serv = null;
 
 var voter_served_callback = null;
 
@@ -15,6 +15,7 @@ var voter_served_callback = null;
 let win;
 
 function createWindow () {
+    serv =  require('./src/app');
     win = new BrowserWindow({
         width: 1024,
         height: 600,
