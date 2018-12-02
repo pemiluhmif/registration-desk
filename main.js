@@ -6,7 +6,7 @@ const yargs = require('yargs');
 const uuid4 = require('uuid4');
 
 // Start the express app
-let serv = null;
+let serv = require('./src/app');
 
 var voter_served_callback = null;
 
@@ -69,8 +69,6 @@ app.on('ready', ()=>{
         .alias("i","initial")
         .boolean("i")
         .describe("i","Initial load (load JSON config)")
-        .default("config","manifest.json")
-        .default("auth","auth.json")
         .default("db","pemilu.db");
 
     let argv;
@@ -83,18 +81,42 @@ app.on('ready', ()=>{
     let status = Database.init(argv.db);
 
     if(status["status"]){
-        // Initial config
-        if(argv.initial){
-            try {
-                let ret = Database.loadInitManifest(Database.loadJSON(argv.config));
-                if(ret['status']===false){
-                    dialog.showErrorBox("Error on JSON (manifest) load",ret['msg']);
+        // Initial config if specified OR database is empty
+        if(argv.initial || !(Database.hasTable("config") && Database.hasTable("voters") &&
+            Database.hasTable("voting_types") && Database.hasTable("candidates"))) {
+
+            if(argv.config !== undefined) {
+                // If config is specified in argument, use that
+                console.log("Loading manifest from file..");
+
+                try {
+                    let ret = Database.loadInitManifest(Database.loadJSON(argv.config));
+                    if (ret['status'] === false) {
+                        dialog.showErrorBox("Error on JSON (manifest) load", ret['msg']);
+                        process.exit(1);
+                    }
+                } catch (e) {
+                    dialog.showErrorBox("Error on JSON (manifest) load", e.message);
+                    console.error(e.message);
                     process.exit(1);
                 }
-            } catch (e) {
-                dialog.showErrorBox("Error on JSON (manifest) load",e.message);
-                console.error(e.message);
-                process.exit(1);
+            } else {
+                // Otherwise, try to initialize from built-in initialization manifest
+                console.log("Loading built-in manifest..");
+
+                try {
+                    let init_config = require("./init_param").init_config;
+                    let ret = Database.loadInitManifest(JSON.stringify(init_config));
+                    if (ret['status'] === false) {
+                        dialog.showErrorBox("Error on built-in JSON manifest load", ret['msg']);
+                        process.exit(1);
+                    }
+                } catch (mnf) {
+                    // Built-in manifest not found
+                    dialog.showErrorBox("Error on JSON (manifest) load", "Built-in manifest not found");
+                    console.log(mnf.message);
+                    process.exit(1);
+                }
             }
         }
 
@@ -105,7 +127,7 @@ app.on('ready', ()=>{
                 dialog.showErrorBox("Error on JSON (auth) load",ret['msg']);
                 process.exit(1);
             }
-            if(argv.initial){
+            if(argv.initial || !(Database.hasTable("last_signature") && Database.hasTable("vote_record"))){
                 Database.setupTable();
             }
         } catch (e) {
