@@ -3,7 +3,6 @@
  *
  * @author Muhammad Aditya Hilmy, NIM 18217025
  * @author Joshua C. Randiny
- * @deprecated
  */
 
 const sqlite3 = require('better-sqlite3');
@@ -237,9 +236,9 @@ exports.close = function() {
 
 /**
  * Load Initialization Manifest and persists it to SQLite
- * @param initDataRaw initialization manifest JSON object
+ * @param initData initialization manifest JSON object
  */
-exports.loadInitManifest = function(initDataRaw) {
+exports.loadInitManifest = function(initData) {
     if(db!=null){
         db.exec(`DROP TABLE IF EXISTS config;`);
         db.exec(`CREATE TABLE config (
@@ -277,8 +276,6 @@ exports.loadInitManifest = function(initDataRaw) {
         `);
 
         console.log("Trying to load JSON config");
-
-        let initData = JSON.parse(initDataRaw);
 
         let stmt = db.prepare("INSERT INTO config VALUES (?,?)");
 

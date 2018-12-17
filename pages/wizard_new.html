@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New Session</title>
+    <link type="text/css" rel="stylesheet" href="bulma.min.css" />
+    <link type="text/css" rel="stylesheet" href="index.css" />
+    <link type="text/css" rel="stylesheet" href="fa/css/all.min.css" />
+</head>
+<body>
+<div id="content-load-init">
+    <div class="content" style="padding: 16px;">
+        <h4>Load Initialization Manifest</h4>
+        <p>
+            Buka file Initialization Manifest untuk sesi pemilihan ini.
+            <br />
+            Initialization Manifest adalah sebuah file yang berisi informasi kandidat, pemilihan, dan Daftar Pemilih Tetap.
+        </p>
+        <div style="margin-top: 32px;">
+            <div class="field has-addons">
+                <div class="control">
+                    <a class="button is-info" id="open-manifest">
+                        Open File
+                    </a>
+                </div>
+                <div class="control is-expanded">
+                    <input class="input" type="text" id="manifest-path" readonly>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="position:absolute; width: 100%; left: 0; bottom: 0; padding: 16px;">
+        <div style="float: left">
+            <a class="button is-rounded" href="open.html"><i class="fas fa-chevron-left"></i> &nbsp; Kembali</a>
+        </div>
+        <div style="float: right">
+            <a class="button is-rounded is-primary" href="javascript: next1()" disabled="disabled" id="next1">Berikutnya &nbsp; <i class="fas fa-chevron-right"></i></a>
+        </div>
+    </div>
+</div>
+
+<div id="content-pick-dest" style="display: none;">
+    <div class="content" style="padding: 16px;">
+        <h4>Pick Working Directory</h4>
+        <p>
+            Pilih folder untuk menampung data-data tentang sesi pemilihan ini.
+        </p>
+        <div style="margin-top: 32px;">
+            <div class="field has-addons">
+                <div class="control">
+                    <a class="button is-info" id="open-dest">
+                        Choose Folder
+                    </a>
+                </div>
+                <div class="control is-expanded">
+                    <input class="input" type="text" id="dest-path" readonly>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="position:absolute; width: 100%; left: 0; bottom: 0; padding: 16px;">
+        <div style="float: left">
+            <a class="button is-rounded" href="javascript: back2()"><i class="fas fa-chevron-left"></i> &nbsp; Kembali</a>
+        </div>
+        <div style="float: right">
+            <a class="button is-rounded is-primary" href="javascript: next2()" disabled="disabled" id="next2">Berikutnya &nbsp; <i class="fas fa-chevron-right"></i></a>
+        </div>
+    </div>
+</div>
+
+<div id="content-setting-up" style="display: none;">
+    <div class="content" style="padding: 16px;">
+        <h4>Setting up</h4>
+        <p>
+            Kami sedang mempersiapkan sesi pemilihan, tunggu sebentar..
+        </p>
+        <pre id="log"></pre>
+    </div>
+    <div style="position:absolute; width: 100%; left: 0; bottom: 0; padding: 16px;">
+
+        <div style="float: right">
+            <a class="button is-rounded is-primary" href="javascript: next3()" disabled="disabled" id="next3">Selesai &nbsp; <i class="fas fa-chevron-right"></i></a>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    const {dialog} = require('electron').remote;
+    const ipcRenderer = require('electron').ipcRenderer;
+    const fs = require('fs');
+
+    let manifest, dest;
+
+    document.querySelector('#open-manifest').addEventListener('click', function (event) {
+        dialog.showOpenDialog({
+            properties: ['openFile'],
+            title: "Open Initialization Manifest",
+            filters: [{name: 'Vote Initialization Manifest', extensions: ['json', 'vmn']}]
+        }, function (manifestPath) {
+            if (manifestPath !== undefined) {
+                document.querySelector('#manifest-path').value = manifestPath[0];
+                document.querySelector('#next1').removeAttribute("disabled");
+
+                manifest = manifestPath[0];
+            }
+        });
+    });
+
+    document.querySelector('#open-dest').addEventListener('click', function (event) {
+        dialog.showOpenDialog({
+            properties: ['openDirectory', 'createDirectory'],
+            title: "Select a destination folder"
+        }, function (destPath) {
+            if (destPath !== undefined) {
+                document.querySelector('#dest-path').value = destPath[0];
+                document.querySelector('#next2').removeAttribute("disabled");
+
+                dest = destPath[0];
+            }
+        });
+    });
+
+    function next1() {
+        if(!document.querySelector('#next1').hasAttribute("disabled")) {
+            document.querySelector('#content-load-init').style.display = 'none';
+            document.querySelector('#content-pick-dest').style.display = 'inherit';
+        }
+    }
+
+    function back2() {
+        document.querySelector('#content-load-init').style.display = 'inherit';
+        document.querySelector('#content-pick-dest').style.display = 'none';
+    }
+
+    function next2() {
+        if(!document.querySelector('#next2').hasAttribute("disabled")) {
+            let files = fs.readdirSync(dest);
+
+            console.log(files);
+            if (files.length > 0) {
+                // Directory not empty
+                if(!confirm("Folder tidak kosong, apakah ingin dilanjutkan? File lama akan terhapus!")) {
+                    return;
+                }
+            }
+
+            document.querySelector('#content-pick-dest').style.display = 'none';
+            document.querySelector('#content-setting-up').style.display = 'inherit';
+
+            ipcRenderer.send("new_session", manifest, dest);
+            ipcRenderer.on('new_session-reply', (event, finished, error, msg) => {
+                if(error === null) {
+                    if(!finished) {
+                        document.querySelector('#log').innerHTML += msg + '\n';
+                    } else {
+                        document.querySelector('#log').innerHTML += '<b style="color: green">Selesai!</b>';
+                    }
+                } else {
+                    document.querySelector('#log').innerHTML += '<b style="color: red">' + error + '</b>\n';
+                }
+
+                document.querySelector('#next3').removeAttribute("disabled");
+            })
+        }
+    }
+</script>
+</body>
+</html>

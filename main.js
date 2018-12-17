@@ -5,6 +5,8 @@ const ipcMain = require('electron').ipcMain;
 const yargs = require('yargs');
 const uuid4 = require('uuid4');
 
+const ManifestLoader = require('./modules/manifest_loader');
+
 // Start the express app
 let serv = require('./src/app');
 
@@ -12,27 +14,12 @@ var voter_served_callback = null;
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let win;
+let win, openWindow;
 
 function createWindow () {
     serv =  require('./src/app');
-    win = new BrowserWindow({
-        width: 1024,
-        height: 600,
-        resizable: true
-    })
-    // win.setMenu(null);
-    win.loadURL('http://localhost:5000/');
-    win.focus();
 
-    // Emitted when the window is closed.
-    win.on('closed', () => {
-        // Dereference the window object, usually you would store windows
-        // in an array if your app supports multi windows, this is the time
-        // when you should delete the corresponding element.
-        Messaging.close();
-        win = null
-    });
+    newOpenWindow();
 
     ipcMain.on('publish', function (self, queue, msg) {
         Messaging.publish(queue, msg);
@@ -303,4 +290,56 @@ function checkNIM(NIM){
     }else{
         return {"status":false,"msg":"Tidak terdaftar pada DPT"};
     }
+}
+
+
+function newOpenWindow() {
+    openWindow = new BrowserWindow({
+        width: 600,
+        height: 400,
+        resizable: true
+    });
+    openWindow.loadFile('pages/open.html');
+    //openWindow.webContents.openDevTools();
+
+    // Emitted when the window is closed.
+    openWindow.on('closed', () => {
+        openWindow = null
+    });
+
+    // Called when a new session (open manifest) is invoked
+    ipcMain.on('new_session', function (event, manifestPath, destPath) {
+        ManifestLoader.loadInitializationManifest(manifestPath, destPath, function(msg) {
+            console.log(msg);
+            event.sender.send('new_session-reply', false, null, msg);
+        }).then(function() {
+            event.sender.send('new_session-reply', true, null, '');
+        }).catch(function(e) {
+            console.log(e);
+            event.sender.send('new_session-reply', true, e, '');
+        })
+    });
+}
+
+function newVoteWindow() {
+    win = new BrowserWindow({
+        width: 1024,
+        height: 600,
+        resizable: true
+    });
+    win.close();
+
+    // win.setMenu(null);
+    win.loadURL('http://localhost:5000/');
+    win.focus();
+
+
+    // Emitted when the window is closed.
+    win.on('closed', () => {
+        // Dereference the window object, usually you would store windows
+        // in an array if your app supports multi windows, this is the time
+        // when you should delete the corresponding element.
+        Messaging.close();
+        win = null
+    });
 }
