@@ -46,6 +46,24 @@ exports.loadInitializationManifest = async function(filename, destination, callb
 };
 
 /**
+ * Load auth manifest
+ * @param workingDir working directory
+ * @param manifestPath Path to auth manifest
+ * @returns {Promise<void>}
+ */
+exports.loadAuthorizationManifest = async function(workingDir, manifestPath) {
+    let DB_PATH = path.join(workingDir, 'vote.db');
+    let status = Database.init(DB_PATH);
+
+    if(status["status"]) {
+        let manifestJson = JSON.parse(fs.readFileSync(manifestPath));
+        Database.loadAuthorizationManifest(manifestJson);
+    } else {
+        throw "Database initialization error: " + JSON.stringify(status);
+    }
+};
+
+/**
  * Download assets from the internet
  * @param manifest manifest JSON. Manifest JSON will be altered to match the new URL.
  * @param assets_path assets base path

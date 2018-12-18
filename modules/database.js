@@ -12,9 +12,9 @@ const crypto = require('crypto');
 var db = null;
 
 var nodeId = null;
+var votingSeason = null;
 var machineKey = null;
 var originHash = null;
-var amqpUrl = null;
 
 /**
  * Initializes database object
@@ -95,8 +95,6 @@ exports.getConfig = function (key) {
         let data;
 
         switch(key){
-            case "amqp_url":
-                return amqpUrl;
             case "machine_key":
                 return machineKey;
             case "voting_types":
@@ -290,6 +288,9 @@ exports.loadInitManifest = function(initData) {
         // voting name
         stmt.run('voting_name',initData['voting_name']);
 
+        // voting season
+        stmt.run('voting_season',initData['voting_season']);
+
         // background url
         stmt.run('background_url',initData['background_url']);
 
@@ -348,27 +349,33 @@ exports.loadInitManifest = function(initData) {
 
 /**
  * Load Authorization Manifest
- * @param JSONdata authorization manifest JSON object
+ * @param JSONcontent authorization manifest JSON object
  */
-exports.loadAuthorizationManifest= function(JSONdata){
-    let JSONcontent = JSON.parse(JSONdata);
+exports.loadAuthorizationManifest = function(JSONcontent){
+
+    // Check node ID match
     if(nodeId==null){
         nodeId = this.getConfig("node_id");
     }
-    if(nodeId!==JSONcontent["node_id"]){
-        console.error(`Node id doesn't match`);
-        return {
-            "status": false,
-            "msg": "Node id doesn't match"
-        };
-    }else{
-        machineKey = JSONcontent['machine_key'];
-        amqpUrl = JSONcontent['amqp_url'];
 
-        return {
-            "status": true
-        };
+    if(nodeId!==JSONcontent["node_id"]){
+        console.error(`Node ID does not match`);
+        throw "Node ID does not match";
     }
+
+    // Check voting season match
+    if(votingSeason == null) {
+        votingSeason = this.getConfig("voting_season");
+    }
+
+    if(votingSeason!==JSONcontent["voting_season"]){
+        console.error(`Voting season does not match`);
+        throw "Voting season does not match";
+    }
+
+    machineKey = JSONcontent['machine_key'];
+
+    return true;
 };
 
 /**

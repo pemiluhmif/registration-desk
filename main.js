@@ -14,7 +14,9 @@ var voter_served_callback = null;
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let win, openWindow;
+let win, openWindow, startWindow;
+
+let WORKING_DIR = null;
 
 function createWindow () {
     serv =  require('./src/app');
@@ -314,12 +316,41 @@ function newOpenWindow() {
             event.sender.send('new_session-reply', false, null, msg);
         }).then(function() {
             event.sender.send('new_session-reply', true, null, '');
+            WORKING_DIR = destPath;
+            openWindow.close();
+            newStartWindow();   // TODO update accordingly
         }).catch(function(e) {
             console.log(e);
             event.sender.send('new_session-reply', true, e, '');
         })
     });
 }
+
+function newStartWindow() {
+    startWindow = new BrowserWindow({
+        width: 600,
+        height: 400,
+        resizable: true
+    });
+    startWindow.loadFile('pages/wizard_start.html');
+    //openWindow.webContents.openDevTools();
+
+    // Emitted when the window is closed.
+    startWindow.on('closed', () => {
+        startWindow = null
+    });
+
+    // Called when a new session (open manifest) is invoked
+    ipcMain.on('load_auth', function (event, manifestPath) {
+        ManifestLoader.loadAuthorizationManifest(WORKING_DIR, manifestPath).then(function() {
+            event.sender.send('load_auth-reply', true, '');
+        }).catch(function(e) {
+            console.log(e);
+            event.sender.send('load_auth-reply', false, e);
+        })
+    });
+}
+
 
 function newVoteWindow() {
     win = new BrowserWindow({
