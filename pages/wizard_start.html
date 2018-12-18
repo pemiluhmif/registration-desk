@@ -30,6 +30,9 @@
         </div>
     </div>
     <div style="position:absolute; width: 100%; left: 0; bottom: 0; padding: 16px;">
+        <div style="float: left">
+            <a class="button is-rounded" href="open.html"><i class="fas fa-times"></i> &nbsp; Batalkan</a>
+        </div>
         <div style="float: right">
             <a class="button is-rounded is-primary" href="javascript: next1()" disabled="disabled" id="next1">Berikutnya &nbsp; <i class="fas fa-chevron-right"></i></a>
         </div>
@@ -73,6 +76,31 @@
 
     let manifest, dest;
 
+    // Setup reply listeners
+    ipcRenderer.on('load_auth-reply', (event, success, msg) => {
+        document.querySelector('#next1').removeAttribute("disabled");
+
+        if(success) {
+            document.querySelector('#content-load-init').style.display = 'none';
+            document.querySelector('#content-pick-dest').style.display = 'inherit';
+        } else {
+            alert(msg);
+        }
+    });
+
+    ipcRenderer.on('start_session-reply', (event, finished, error, msg) => {
+        if(error === null) {
+            if(!finished) {
+                document.querySelector('#log').innerHTML += msg + '\n';
+            } else {
+                document.querySelector('#log').innerHTML += '<b style="color: green">Selesai!</b>';
+                document.querySelector('#next3').removeAttribute("disabled");
+            }
+        } else {
+            document.querySelector('#log').innerHTML += '<b style="color: red">' + error + '</b>\n';
+        }
+    });
+
     document.querySelector('#open-manifest').addEventListener('click', function (event) {
         dialog.showOpenDialog({
             properties: ['openFile'],
@@ -93,16 +121,6 @@
             document.querySelector('#next1').setAttribute("disabled", "disabled");
 
             ipcRenderer.send("load_auth", manifest);
-            ipcRenderer.on('load_auth-reply', (event, success, msg) => {
-                document.querySelector('#next1').removeAttribute("disabled");
-
-                if(success) {
-                    document.querySelector('#content-load-init').style.display = 'none';
-                    document.querySelector('#content-pick-dest').style.display = 'inherit';
-                } else {
-                    alert(msg);
-                }
-            });
         }
     }
 
@@ -117,18 +135,6 @@
             document.querySelector('#content-setting-up').style.display = 'inherit';
 
             ipcRenderer.send("start_session", manifest, dest);
-            ipcRenderer.on('start_session-reply', (event, finished, error, msg) => {
-                if(error === null) {
-                    if(!finished) {
-                        document.querySelector('#log').innerHTML += msg + '\n';
-                    } else {
-                        document.querySelector('#log').innerHTML += '<b style="color: green">Selesai!</b>';
-                        document.querySelector('#next3').removeAttribute("disabled");
-                    }
-                } else {
-                    document.querySelector('#log').innerHTML += '<b style="color: red">' + error + '</b>\n';
-                }
-            })
         }
     }
 </script>

@@ -85,6 +85,18 @@
 
     let manifest, dest;
 
+    ipcRenderer.on('new_session-reply', (event, finished, error, msg) => {
+        if(error === null) {
+            if(!finished) {
+                document.querySelector('#log').innerHTML += msg + '\n';
+            } else {
+                document.querySelector('#log').innerHTML += '<b style="color: green">Selesai!</b>';
+            }
+        } else {
+            document.querySelector('#log').innerHTML += '<b style="color: red">' + error + '</b>\n';
+        }
+    });
+
     document.querySelector('#open-manifest').addEventListener('click', function (event) {
         dialog.showOpenDialog({
             properties: ['openFile'],
@@ -142,17 +154,6 @@
             document.querySelector('#content-setting-up').style.display = 'inherit';
 
             ipcRenderer.send("new_session", manifest, dest);
-            ipcRenderer.on('new_session-reply', (event, finished, error, msg) => {
-                if(error === null) {
-                    if(!finished) {
-                        document.querySelector('#log').innerHTML += msg + '\n';
-                    } else {
-                        document.querySelector('#log').innerHTML += '<b style="color: green">Selesai!</b>';
-                    }
-                } else {
-                    document.querySelector('#log').innerHTML += '<b style="color: red">' + error + '</b>\n';
-                }
-            })
         }
     }
 </script>

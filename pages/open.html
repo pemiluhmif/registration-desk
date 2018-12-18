@@ -20,7 +20,7 @@
             New Session
         </a>
         &nbsp;
-        <a href="#">
+        <a href="javascript: open()">
             <span class="icon is-small">
               <i class="fas fa-file"></i>
             </span>
@@ -28,5 +28,30 @@
         </a>
     </div>
 </div>
+
+<script type="text/javascript">
+    const {dialog} = require('electron').remote;
+    const ipcRenderer = require('electron').ipcRenderer;
+    const fs = require('fs');
+    const path = require('path');
+
+    function open() {
+        dialog.showOpenDialog({
+            properties: ['openDirectory'],
+            title: "Select working directory"
+        }, function (destPath) {
+            if (destPath !== undefined) {
+                let DB_PATH = path.join(destPath[0], 'vote.db');
+
+                if(fs.existsSync(DB_PATH)) {
+                    ipcRenderer.send("open_working_dir", destPath[0]);
+                    window.location.href = "wizard_start.html";
+                } else {
+                    alert("Invalid working directory");
+                }
+            }
+        });
+    }
+</script>
 </body>
 </html>

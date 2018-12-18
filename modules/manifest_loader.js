@@ -25,6 +25,11 @@ exports.loadInitializationManifest = async function(filename, destination, callb
 
         let manifestJson = JSON.parse(fs.readFileSync(filename));
 
+        // Check if manifest is init
+        if(manifestJson['manifest'] !== 'init') {
+            throw "File is not initialization manifest";
+        }
+
         if(callback !==undefined) callback("Creating assets directory");
 
         // Delete assets directory, if any
@@ -57,6 +62,12 @@ exports.loadAuthorizationManifest = async function(workingDir, manifestPath) {
 
     if(status["status"]) {
         let manifestJson = JSON.parse(fs.readFileSync(manifestPath));
+
+        // Check if manifest is auth
+        if(manifestJson['manifest'] !== 'auth') {
+            throw "File is not authorization manifest";
+        }
+
         Database.loadAuthorizationManifest(manifestJson);
     } else {
         throw "Database initialization error: " + JSON.stringify(status);
@@ -98,10 +109,6 @@ function initializeDatabase(manifest, db_path) {
     if(status["status"]){
         console.log("Loading manifest from file..");
         let ret = Database.loadInitManifest(manifest);
-        if (ret['status'] === false) {
-            process.exit(1);
-            throw "Error loading manifest";
-        }
     } else {
         throw "Error on init: " + status["msg"];
     }

@@ -237,6 +237,11 @@ exports.close = function() {
  * @param initData initialization manifest JSON object
  */
 exports.loadInitManifest = function(initData) {
+    // Check if manifest is init
+    if(initData['manifest'] !== 'init') {
+        throw "File is not initialization manifest";
+    }
+
     if(db!=null){
         db.exec(`DROP TABLE IF EXISTS config;`);
         db.exec(`CREATE TABLE config (
@@ -335,15 +340,8 @@ exports.loadInitManifest = function(initData) {
         }
 
         console.log("done candidates");
-
-        return {
-            "status": true
-        };
-    }else{
-        return {
-            "status": false,
-            "msg": "Database not initialized"
-        };
+    } else {
+        throw "Database not initialized";
     }
 };
 
@@ -353,13 +351,17 @@ exports.loadInitManifest = function(initData) {
  */
 exports.loadAuthorizationManifest = function(JSONcontent){
 
+    // Check if manifest is auth
+    if(JSONcontent['manifest'] !== 'auth') {
+        throw "File is not authorization manifest";
+    }
+
     // Check node ID match
     if(nodeId==null){
         nodeId = this.getConfig("node_id");
     }
 
     if(nodeId!==JSONcontent["node_id"]){
-        console.error(`Node ID does not match`);
         throw "Node ID does not match";
     }
 
@@ -369,7 +371,6 @@ exports.loadAuthorizationManifest = function(JSONcontent){
     }
 
     if(votingSeason!==JSONcontent["voting_season"]){
-        console.error(`Voting season does not match`);
         throw "Voting season does not match";
     }
 
@@ -507,4 +508,24 @@ exports.hasTable = function(tblName) {
     let stmtCount = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?");
 
     return stmtCount.get(tblName) !== undefined;
+};
+
+/**
+ * This function generates the hash of DPT
+ * DPT Hash is used to compare the DPT between two nodes.
+ * It is a SHA1 digest of (NIM1-name1;) + ..., orderer by NIM ascending
+ * @pre DB is initialized
+ */
+exports.generateDPTHash = function() {
+    let raw = "";
+    let stmt = db.prepare('SELECT name, nim FROM voters ORDER BY nim ASC');
+    let voters = stmt.all();
+
+    voters.forEach(function(voter) {
+        raw += voter['nim'] + '-' + voter['name'] + ';';
+    });
+
+    let hash = crypto.createHash('sha256').update(raw).digest('hex');
+
+    return hash;
 };

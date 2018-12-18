@@ -1,6 +1,6 @@
 const { dialog, app, BrowserWindow } = require('electron');
 const Messaging = require('./messaging');
-const Database = require('./database');
+const Database = require('./modules/database');
 const ipcMain = require('electron').ipcMain;
 const yargs = require('yargs');
 const uuid4 = require('uuid4');
@@ -14,16 +14,16 @@ var voter_served_callback = null;
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let win, openWindow, startWindow;
+let win, openWindow, newWindow, startWindow;
 
 let WORKING_DIR = null;
 
-function createWindow () {
+function createWindow() {
     serv =  require('./src/app');
 
     newOpenWindow();
 
-    ipcMain.on('publish', function (self, queue, msg) {
+    /*ipcMain.on('publish', function (self, queue, msg) {
         Messaging.publish(queue, msg);
     });
 
@@ -43,14 +43,16 @@ function createWindow () {
         }else{
             event.sender.send("invalid-voter",ret['msg']);
         }
-    });
+    });*/
 }
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', ()=>{
-    let yargsSetting = yargs.usage("Usage: $0 [options]")
+    createWindow();
+
+    /*let yargsSetting = yargs.usage("Usage: $0 [options]")
         .example("$0 -i --setting=myManifest.json --auth=myAuth.json --db=myDb.db")
         .example("$0")
         .alias("h","help")
@@ -141,7 +143,7 @@ app.on('ready', ()=>{
 
     }else{
         dialog.showErrorBox("Error on init",status["msg"]);
-    }
+    }*/
 
 });
 
@@ -165,7 +167,7 @@ app.on('activate', () => {
 /**
  * TODO Enable node (invoked after loading Authorization Mainfest)
  */
-function enableNode(nodeId, originHash, machineKey, amqpUrl) {
+/*function enableNode(nodeId, originHash, machineKey, amqpUrl) {
     // Connect to broker
     Messaging.init(nodeId, Messaging.NODE_TYPE_REGDESK);
     Messaging.connect(amqpUrl, function() {
@@ -253,7 +255,7 @@ function enableNode(nodeId, originHash, machineKey, amqpUrl) {
     });
 
     Database.authorize(machineKey);
-}
+}*/
 
 /**
  * Incoming voter
@@ -294,6 +296,37 @@ function checkNIM(NIM){
     }
 }
 
+// Called when a new session (open manifest) is invoked
+ipcMain.on('new_session', function (event, manifestPath, destPath) {
+    ManifestLoader.loadInitializationManifest(manifestPath, destPath, function(msg) {
+        console.log(msg);
+        event.sender.send('new_session-reply', false, null, msg);
+    }).then(function() {
+        event.sender.send('new_session-reply', true, null, '');
+        WORKING_DIR = destPath;
+
+        openWindow.loadFile('pages/wizard_start.html');   // TODO update accordingly
+    }).catch(function(e) {
+        console.log("Error: " + e);
+        event.sender.send('new_session-reply', true, e, '');
+    })
+});
+
+// Called when load auth manifest is invoked
+ipcMain.on('load_auth', function (event, manifestPath) {
+    ManifestLoader.loadAuthorizationManifest(WORKING_DIR, manifestPath).then(function() {
+        event.sender.send('load_auth-reply', true, '');
+        let dpt_hash = Database.generateDPTHash();
+    }).catch(function(e) {
+        console.log("Error: " + e);
+        event.sender.send('load_auth-reply', false, e);
+    })
+});
+
+// Called when load auth manifest is invoked
+ipcMain.on('open_working_dir', function (event, workingDir) {
+    WORKING_DIR = workingDir;
+});
 
 function newOpenWindow() {
     openWindow = new BrowserWindow({
@@ -308,49 +341,7 @@ function newOpenWindow() {
     openWindow.on('closed', () => {
         openWindow = null
     });
-
-    // Called when a new session (open manifest) is invoked
-    ipcMain.on('new_session', function (event, manifestPath, destPath) {
-        ManifestLoader.loadInitializationManifest(manifestPath, destPath, function(msg) {
-            console.log(msg);
-            event.sender.send('new_session-reply', false, null, msg);
-        }).then(function() {
-            event.sender.send('new_session-reply', true, null, '');
-            WORKING_DIR = destPath;
-            openWindow.close();
-            newStartWindow();   // TODO update accordingly
-        }).catch(function(e) {
-            console.log(e);
-            event.sender.send('new_session-reply', true, e, '');
-        })
-    });
 }
-
-function newStartWindow() {
-    startWindow = new BrowserWindow({
-        width: 600,
-        height: 400,
-        resizable: true
-    });
-    startWindow.loadFile('pages/wizard_start.html');
-    //openWindow.webContents.openDevTools();
-
-    // Emitted when the window is closed.
-    startWindow.on('closed', () => {
-        startWindow = null
-    });
-
-    // Called when a new session (open manifest) is invoked
-    ipcMain.on('load_auth', function (event, manifestPath) {
-        ManifestLoader.loadAuthorizationManifest(WORKING_DIR, manifestPath).then(function() {
-            event.sender.send('load_auth-reply', true, '');
-        }).catch(function(e) {
-            console.log(e);
-            event.sender.send('load_auth-reply', false, e);
-        })
-    });
-}
-
 
 function newVoteWindow() {
     win = new BrowserWindow({
